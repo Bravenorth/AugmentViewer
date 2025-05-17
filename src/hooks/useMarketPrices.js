@@ -7,7 +7,7 @@ export default function useMarketPrices() {
   const API_BASE_URL =
     import.meta.env.MODE === "development"
       ? "/api"
-      : "https://api.idlescape.com";
+      : "https://play.idlescape.com";
 
   useEffect(() => {
     let isMounted = true;
