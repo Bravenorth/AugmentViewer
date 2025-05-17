@@ -7,19 +7,21 @@ export default function useMarketPrices() {
   const API_BASE_URL =
     import.meta.env.MODE === "development"
       ? "/api"
-      : "https://api.idlescape.com"; // ← Remplace si nécessaire !
+      : "https://api.idlescape.com";
 
   useEffect(() => {
     let isMounted = true;
 
     fetch(`${API_BASE_URL}/market/manifest`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur de réponse API");
+        return res.json();
+      })
       .then((data) => {
         if (!isMounted) return;
-
         const priceMap = {};
+
         for (const item of data.manifest) {
-          // ✅ Utilise uniquement les données de la league 1
           if (item.league === 1 && item.name && item.minPrice != null) {
             priceMap[item.name] = item.minPrice;
           }
@@ -27,9 +29,9 @@ export default function useMarketPrices() {
 
         setPrices(priceMap);
       })
-      .catch((err) =>
-        console.error("Erreur lors du chargement des prix :", err)
-      );
+      .catch((err) => {
+        console.error("Erreur lors du chargement des prix :", err);
+      });
 
     return () => {
       isMounted = false;
