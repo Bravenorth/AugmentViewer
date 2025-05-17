@@ -1,37 +1,39 @@
 // src/hooks/useMarketPrices.js
 import { useEffect, useState } from "react";
+import fallbackManifest from "../data/manifest.json";
 
 export default function useMarketPrices() {
   const [prices, setPrices] = useState({});
 
-  const API_BASE_URL =
-    import.meta.env.MODE === "development"
-      ? "/api"
-      : "https://play.idlescape.com"; // <-- correction ici
-
   useEffect(() => {
     let isMounted = true;
 
-    fetch(`${API_BASE_URL}/api/market/manifest`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Erreur de réponse API");
-        return res.json();
-      })
-      .then((data) => {
-        if (!isMounted) return;
-        const priceMap = {};
-
-        for (const item of data.manifest) {
-          if (item.league === 1 && item.name && item.minPrice != null) {
-            priceMap[item.name] = item.minPrice;
-          }
+    const processManifest = (manifest) => {
+      const priceMap = {};
+      for (const item of manifest) {
+        if (item.league === 1 && item.name && item.minPrice != null) {
+          priceMap[item.name] = item.minPrice;
         }
+      }
+      if (isMounted) setPrices(priceMap);
+    };
 
-        setPrices(priceMap);
-      })
-      .catch((err) => {
-        console.error("Erreur lors du chargement des prix :", err);
-      });
+    const isDev = import.meta.env.MODE === "development";
+
+    if (isDev) {
+      fetch("/api/market/manifest")
+        .then((res) => {
+          if (!res.ok) throw new Error("Erreur de réponse API");
+          return res.json();
+        })
+        .then((data) => processManifest(data.manifest))
+        .catch((err) => {
+          console.error("Erreur lors du chargement des prix (dev):", err);
+        });
+    } else {
+      // fallback static manifest in prod due to CORS (will fix later, not important now)
+      processManifest(fallbackManifest);
+    }
 
     return () => {
       isMounted = false;

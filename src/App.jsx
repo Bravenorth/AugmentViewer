@@ -18,7 +18,7 @@ export default function App() {
 
   return (
     <>
-      {/* Global styles patch for selector ... chakra bug? */}
+      {/* Global styles patch for selector ... chakra bug? to fix later */}
       <style>
         {`
           select, option {
