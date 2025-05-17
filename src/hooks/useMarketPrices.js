@@ -7,12 +7,12 @@ export default function useMarketPrices() {
   const API_BASE_URL =
     import.meta.env.MODE === "development"
       ? "/api"
-      : "https://play.idlescape.com";
+      : "https://play.idlescape.com"; // <-- correction ici
 
   useEffect(() => {
     let isMounted = true;
 
-    fetch(`${API_BASE_URL}/market/manifest`)
+    fetch(`${API_BASE_URL}/api/market/manifest`)
       .then((res) => {
         if (!res.ok) throw new Error("Erreur de réponse API");
         return res.json();
