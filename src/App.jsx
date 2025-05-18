@@ -1,13 +1,9 @@
-// src/App.jsx
 import {
   Box,
   Text,
   Link,
-  VStack,
   Heading,
-  Container,
   Flex,
-  Button,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import ItemSearch from "./components/ItemSearch";
@@ -18,7 +14,7 @@ export default function App() {
 
   return (
     <>
-      {/* Global styles patch for selector ... chakra bug? to fix later */}
+      {/* Global styles patch for select options */}
       <style>
         {`
           select, option {
@@ -39,39 +35,36 @@ export default function App() {
         <Box
           as="header"
           py={4}
+          px={{ base: 4, md: 10 }}
           bg="gray.800"
           borderBottom="1px solid"
           borderColor="gray.700"
         >
-          <Container maxW="1000px">
-            <Heading as="h1" size="md">
-              Idlescape Augment Viewer
-            </Heading>
-            <Text fontSize="sm" color="red.400">
-              Beta 1.0.0 | Some data are missing, use at your own risk.
-              <br />
-            </Text>
-          </Container>
+          <Heading as="h1" size="md">
+            Idlescape Augment Viewer
+          </Heading>
+          <Text fontSize="sm" color="red.400">
+            Beta 1.0.1 | Some data are missing, use at your own risk.
+          </Text>
         </Box>
 
         {/* Main Content */}
-        <Box as="main" flex="1" py={6}>
-          <Container maxW="1000px">
-            {!selectedItem ? (
-              <ItemSearch onSelectItem={setSelectedItem} />
-            ) : (
-              <ItemDetail
-                item={selectedItem}
-                onBack={() => setSelectedItem(null)}
-              />
-            )}
-          </Container>
+        <Box as="main" flex="1" py={6} px={{ base: 4, md: 10 }}>
+          {!selectedItem ? (
+            <ItemSearch onSelectItem={setSelectedItem} />
+          ) : (
+            <ItemDetail
+              item={selectedItem}
+              onBack={() => setSelectedItem(null)}
+            />
+          )}
         </Box>
 
         {/* Footer */}
         <Box
           as="footer"
           py={3}
+          px={{ base: 4, md: 10 }}
           bg="gray.800"
           borderTop="1px solid"
           borderColor="gray.700"
@@ -79,59 +72,57 @@ export default function App() {
           bottom={0}
           zIndex={10}
         >
-          <Container maxW="1000px">
-            <Flex
-              direction={{ base: "column", sm: "row" }}
-              justify="space-between"
-              align="center"
-              wrap="wrap"
-              gap={2}
-              fontSize="sm"
-              color="gray.400"
-            >
-              <Text textAlign={{ base: "center", sm: "left" }}>
-                &copy; {new Date().getFullYear()}{" "}
-                <Link
-                  href="https://discordapp.com/users/134398029317799936"
-                  isExternal
-                  color="teal.300"
-                  fontWeight="medium"
-                >
-                  Bravenorth
-                </Link>{" "}
-                – Fan-made, unofficial project.
-              </Text>
+          <Flex
+            direction={{ base: "column", sm: "row" }}
+            justify="space-between"
+            align="center"
+            wrap="wrap"
+            gap={2}
+            fontSize="sm"
+            color="gray.400"
+          >
+            <Text textAlign={{ base: "center", sm: "left" }}>
+              &copy; {new Date().getFullYear()}{" "}
+              <Link
+                href="https://discordapp.com/users/134398029317799936"
+                isExternal
+                color="teal.300"
+                fontWeight="medium"
+              >
+                Bravenorth
+              </Link>{" "}
+              – Fan-made, unofficial project.
+            </Text>
 
-              <Flex gap={4} align="center" wrap="wrap" justify="center">
-                <Text color="gray.500">No account?</Text>
-                <Link
-                  href="https://idlescape.com"
-                  isExternal
-                  color="teal.300"
-                  fontWeight="medium"
-                >
-                  Play Idlescape
-                </Link>
-                <Text color="gray.500">Useful link:</Text>
-                <Link
-                  href="https://wiki.idlescape.com"
-                  isExternal
-                  color="teal.300"
-                  fontWeight="medium"
-                >
-                  Official Wiki
-                </Link>
-                <Link
-                  href="https://discord.gg/VQT4SEBUMk"
-                  isExternal
-                  color="teal.300"
-                  fontWeight="medium"
-                >
-                  Official Discord
-                </Link>
-              </Flex>
+            <Flex gap={4} align="center" wrap="wrap" justify="center">
+              <Text color="gray.500">No account?</Text>
+              <Link
+                href="https://idlescape.com"
+                isExternal
+                color="teal.300"
+                fontWeight="medium"
+              >
+                Play Idlescape
+              </Link>
+              <Text color="gray.500">Useful link:</Text>
+              <Link
+                href="https://wiki.idlescape.com"
+                isExternal
+                color="teal.300"
+                fontWeight="medium"
+              >
+                Official Wiki
+              </Link>
+              <Link
+                href="https://discord.gg/VQT4SEBUMk"
+                isExternal
+                color="teal.300"
+                fontWeight="medium"
+              >
+                Official Discord
+              </Link>
             </Flex>
-          </Container>
+          </Flex>
         </Box>
       </Box>
     </>

@@ -1,4 +1,3 @@
-// src/components/AugmentCalculator.jsx
 import {
   Box,
   Heading,
@@ -31,7 +30,7 @@ const sharedInputStyle = {
 };
 
 export default function AugmentCalculator({ item }) {
-  const baseMaterials = item.augmentCost || {};
+  const baseMaterials = item.augmenting || {};
 
   const [startLevel, setStartLevel] = useState(0);
   const [startProgress, setStartProgress] = useState(0);

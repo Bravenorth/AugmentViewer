@@ -19,7 +19,7 @@ import {
 } from "@chakra-ui/react";
 import { SearchIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import items from "../data/merged_items.json";
+import rawItems from "../data/combined_items.json";
 
 const ITEMS_PER_LOAD = 30;
 
@@ -30,6 +30,11 @@ export default function ItemSearch({ onSelectItem }) {
   const observerRef = useRef();
   const { isOpen, onToggle } = useDisclosure();
 
+  const items = useMemo(
+    () => Object.values(rawItems).filter((item) => item.name),
+    []
+  );
+
   const rarityColors = {
     common: "gray",
     uncommon: "green",
@@ -39,16 +44,9 @@ export default function ItemSearch({ onSelectItem }) {
     mythical: "red",
   };
 
-  // const augmentableItems = useMemo(
-  //   () => items.filter((item) => item.augmentCost && Object.keys(item.augmentCost).length > 0),
-  //   []
-  // );
-
-  const displayedItems = useMemo(() => items, []);
-
   const getAllTags = useMemo(() => {
     const tagSet = new Set();
-    displayedItems.forEach((item) => {
+    items.forEach((item) => {
       if (item.rarity) tagSet.add(item.rarity);
       if (item.class) tagSet.add(item.class);
       if (item.tradeable === false) tagSet.add("untradeable");
@@ -56,7 +54,7 @@ export default function ItemSearch({ onSelectItem }) {
       if (item.tags) item.tags.forEach((t) => tagSet.add(t));
     });
     return Array.from(tagSet).sort();
-  }, [displayedItems]);
+  }, [items]);
 
   const handleTagToggle = (tag) => {
     setActiveTags((prev) =>
@@ -82,7 +80,7 @@ export default function ItemSearch({ onSelectItem }) {
     return activeTags.every((tag) => normalizedTags.includes(tag));
   };
 
-  const filteredItems = displayedItems
+  const filteredItems = items
     .filter(
       (item) =>
         item.name?.toLowerCase().includes(query.toLowerCase()) ||
