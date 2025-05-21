@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import {
   Box,
   Text,
@@ -8,6 +10,7 @@ import {
 import { useState } from "react";
 import ItemSearch from "./components/ItemSearch";
 import ItemDetail from "./components/ItemDetail";
+import VersionBadge from "./components/VersionBadge"; // ✅ nouvelle importation
 
 export default function App() {
   const [selectedItem, setSelectedItem] = useState(null);
@@ -18,8 +21,8 @@ export default function App() {
       <style>
         {`
           select, option {
-            background-color: #2d3748 !important; /* gray.800 */
-            color: #edf2f7 !important;            /* gray.100 */
+            background-color: #2d3748 !important;
+            color: #edf2f7 !important;
           }
         `}
       </style>
@@ -40,11 +43,14 @@ export default function App() {
           borderBottom="1px solid"
           borderColor="gray.700"
         >
-          <Heading as="h1" size="md">
-            Idlescape Augment Viewer
-          </Heading>
-          <Text fontSize="sm" color="red.400">
-            Beta 1.0.1 | Some data are missing, use at your own risk.
+          <Flex justify="space-between" align="center" wrap="wrap" gap={2}>
+            <Heading as="h1" size="md">
+              Idlescape Augment Viewer
+            </Heading>
+            <VersionBadge version={__APP_VERSION__} />
+          </Flex>
+          <Text fontSize="sm" color="gray.400" mt={1}>
+            Some data are missing, use at your own risk.
           </Text>
         </Box>
 
@@ -121,6 +127,7 @@ export default function App() {
               >
                 Official Discord
               </Link>
+              <VersionBadge version={__APP_VERSION__} />
             </Flex>
           </Flex>
         </Box>
