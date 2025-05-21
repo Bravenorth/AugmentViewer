@@ -1,17 +1,19 @@
+# Changelog
+
+---
+
 ## [1.0.2] - 2025-05-21
 
 ### UI / UX Enhancements
 - Completely revamped `ItemStatTooltip` layout for better readability:
   - Sections now arranged in multiple responsive columns using `Flex` wrapping
   - Minimum width preserved to ensure consistent alignment across stat blocks
-
 - Improved number formatting:
   - Removed unnecessary "+" for:
     - `Attack Speed` (now displayed as `3.1s`)
     - `Required Level` and flat stats like `strength`
   - Kept `+` sign for relative stats (e.g. affinities, bonuses)
   - All numeric values now consistently aligned right for clean vertical scan
-
 - Visual refinements:
   - Hover effect (`bg: gray.700`) on table rows for better feedback
   - Monospace font applied for all numeric cells
@@ -21,8 +23,24 @@
 - Extracted stat rendering logic into clean modular helpers:
   - `formatStatValue()` — handles sign, suffix, and styling
   - `prepareTableRows()` — flattens nested stats and filters out noise
-
 - Added per-section control (`forceSign`) to toggle the sign logic dynamically
+
+### Augment Calculator Rework
+- Refactored `AugmentCalculator.jsx` into modular components:
+  - `Main.jsx`, `LevelSelector.jsx`, `CounterInput.jsx`, `MaterialConfig.jsx`, `LevelTable.jsx`, `Summary.jsx`
+- New folder structure under `src/components/AugmentCalculator/` for clean separation
+- Rewired `ItemDetail.jsx` to import the new composed component
+- Added `index.js` export for easy import
+
+### New Functional Features
+- Augment Time Estimator:
+  - User-defined `Time per counter` in seconds (supports decimals like `2.5`)
+  - `Critical augment chance (%)` field, reduces estimated time on proc (e.g. 10% chance to gain a +2)
+  - `Quick Study` level (0–20), simulates progressive chances to skip counters (4% per level up to 80%)
+  - Formula: estimated time = `effective counters × counterTime`
+- Improved numeric field handling:
+  - `CounterInput` now accepts and parses floating values with `.` or `,` (e.g. `10.5`, `10,5`)
+  - Replaced Chakra's `NumberInput` with custom `Input + parseFloat` for better control
 
 ---
 

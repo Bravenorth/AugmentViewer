@@ -9,7 +9,7 @@ import {
   Divider,
 } from "@chakra-ui/react";
 import { ArrowBackIcon } from "@chakra-ui/icons";
-import AugmentCalculator from "./AugmentCalculator";
+import AugmentCalculator from "./AugmentCalculator/Main";
 import ItemStatTooltip from "./ItemStatTooltip";
 
 const rarityColors = {
