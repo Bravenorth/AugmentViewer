@@ -1,11 +1,12 @@
+// src/components/ItemDetail.jsx
 import {
   Box,
   Text,
   Button,
   Tag,
   Wrap,
-  WrapItem,
   Flex,
+  Divider,
 } from "@chakra-ui/react";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import AugmentCalculator from "./AugmentCalculator";
@@ -39,7 +40,7 @@ export default function ItemDetail({ item, onBack }) {
       </Button>
 
       <Flex gap={6} direction={{ base: "column", md: "row" }} align="flex-start">
-        {/* LEFT SIDE - STATS TOOLTIP STYLE */}
+        {/* LEFT - ITEM STATS */}
         <Box
           flex="1.4"
           bg="gray.800"
@@ -49,10 +50,12 @@ export default function ItemDetail({ item, onBack }) {
           p={5}
           minW={0}
         >
+          {/* TITLE */}
           <Text fontSize="lg" fontWeight="bold" mb={2} color="gray.100">
             {item.name}
           </Text>
 
+          {/* METADATA TAGS */}
           <Wrap mb={3} spacing={2}>
             {item.rarity && (
               <Tag size="sm" colorScheme={rarityColors[item.rarity] || "gray"}>
@@ -81,21 +84,37 @@ export default function ItemDetail({ item, onBack }) {
             )}
           </Wrap>
 
+          {/* EXTRA TAGS */}
           {item.tags?.length > 0 && (
             <Wrap mb={3} spacing={1}>
               {item.tags.map((tag) => (
-                <Tag size="sm" colorScheme="gray" key={tag}>
+                <Tag key={tag} size="sm" colorScheme="gray">
                   {tag}
                 </Tag>
               ))}
             </Wrap>
           )}
 
-          {/* Full stat block rendered via reusable compact tooltip */}
+          {/* DESCRIPTION */}
+          {item.extraTooltipInfo && (
+            <>
+              <Divider mb={3} borderColor="gray.700" />
+              <Text fontSize="xs" color="gray.500" fontWeight="bold" mb={1}>
+                Description
+              </Text>
+              <Text fontSize="sm" mb={3} color="gray.300" fontStyle="italic">
+                {item.extraTooltipInfo}
+              </Text>
+            </>
+          )}
+
+          <Divider mb={4} borderColor="gray.600" />
+
+          {/* STATS TOOLTIP STYLE */}
           <ItemStatTooltip item={item} />
         </Box>
 
-        {/* RIGHT SIDE - AUGMENT CALCULATOR */}
+        {/* RIGHT - AUGMENT CALCULATOR */}
         <Box
           flex="1"
           bg="gray.800"
@@ -109,13 +128,15 @@ export default function ItemDetail({ item, onBack }) {
             Augment Calculator
           </Text>
           <Text fontSize="sm" color="gray.400">
-            This panel will allow you to calculate total augment cost, level
-            targets, and more based on item data.
+            This panel will allow you to calculate total augment cost, level targets, and more based on item data.
           </Text>
+
           <Box my={4} h="1px" bg="gray.600" />
+
           <Text fontSize="sm" color="red.500" mb={2}>
             WORK IN PROGRESS – Base material and recipe data may be incomplete or approximative.
           </Text>
+
           <AugmentCalculator item={item} />
         </Box>
       </Flex>
