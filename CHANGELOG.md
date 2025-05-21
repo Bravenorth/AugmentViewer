@@ -1,4 +1,30 @@
-# Changelog
+## [1.0.2] - 2025-05-21
+
+### UI / UX Enhancements
+- Completely revamped `ItemStatTooltip` layout for better readability:
+  - Sections now arranged in multiple responsive columns using `Flex` wrapping
+  - Minimum width preserved to ensure consistent alignment across stat blocks
+
+- Improved number formatting:
+  - Removed unnecessary "+" for:
+    - `Attack Speed` (now displayed as `3.1s`)
+    - `Required Level` and flat stats like `strength`
+  - Kept `+` sign for relative stats (e.g. affinities, bonuses)
+  - All numeric values now consistently aligned right for clean vertical scan
+
+- Visual refinements:
+  - Hover effect (`bg: gray.700`) on table rows for better feedback
+  - Monospace font applied for all numeric cells
+  - Table layout now fixed for perfect alignment between keys and values
+
+### Technical Refactors
+- Extracted stat rendering logic into clean modular helpers:
+  - `formatStatValue()` — handles sign, suffix, and styling
+  - `prepareTableRows()` — flattens nested stats and filters out noise
+
+- Added per-section control (`forceSign`) to toggle the sign logic dynamically
+
+---
 
 ## [1.0.1] - 2025-05-18
 

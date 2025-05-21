@@ -1,190 +1,229 @@
-import { Box, Text, Table, Tbody, Tr, Td, Grid } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Table,
+  Tbody,
+  Tr,
+  Td,
+  Text,
+  chakra,
+} from "@chakra-ui/react";
 import PropTypes from "prop-types";
 
-const formatStat = (value, suffix = "") => {
-  const val = typeof value === "number" ? value : 0;
-  const color = val > 0 ? "green.300" : val < 0 ? "red.300" : "gray.400";
-  const sign = val > 0 ? "+" : "";
-  return (
-    <Text as="span" color={color}>
-      {sign}{val}{suffix}
-    </Text>
-  );
+/* ---------- Styles ---------- */
+
+const STYLES = {
+  wrapper: {
+    bg: "gray.800",
+    border: "1px solid",
+    borderColor: "gray.700",
+    borderRadius: "md",
+    p: 3,
+    maxW: "100%",
+    overflowX: "auto",
+  },
+  statBlock: {
+    minW: "260px",
+    flex: "1 1 260px",
+  },
+  sectionTitle: {
+    fontSize: "xs",
+    fontWeight: "bold",
+    color: "gray.400",
+    mb: 1,
+    whiteSpace: "nowrap",
+  },
+  tableStyle: {
+    w: "100%",
+    tableLayout: "fixed",
+  },
+  labelCell: {
+    w: "50%",
+    pr: 2,
+    color: "gray.500",
+    fontSize: "xs",
+    fontFamily: "monospace",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    p: 0.5,
+  },
+  valueCell: {
+    w: "50%",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    textAlign: "right",
+    fontSize: "xs",
+    fontWeight: "bold",
+    fontFamily: "monospace",
+    whiteSpace: "nowrap",
+    p: 0.5,
+  },
 };
 
-const StatGroup = ({ label, data, suffix = "", transform }) => {
-  if (!data || typeof data !== "object") return null;
+/* ---------- Utils ---------- */
 
-  const entries = Object.entries(data)
-    .map(([key, val]) => {
-      const v = transform ? transform(val, key) : val;
-      const isZero =
-        v == null ||
-        (typeof v === "number" && Math.abs(v) < 0.0001) ||
-        (typeof v === "string" && v.trim() === "0");
-      return isZero ? null : [key, v];
+function flattenStatsObject(stats) {
+  return Object.entries(stats || {}).reduce((flat, [key, value]) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      Object.assign(flat, value);
+    } else {
+      flat[key] = value;
+    }
+    return flat;
+  }, {});
+}
+
+const ColoredValue = chakra(Text, {
+  baseStyle: ({ value }) => ({
+    color: value > 0 ? "green.300" : value < 0 ? "red.300" : "gray.400",
+    textAlign: "right",
+    as: "span",
+  }),
+});
+
+function formatStatValue(value, suffix = "", opts = {}) {
+  const { forceSign = true } = opts;
+  if (typeof value === "number") {
+    return (
+      <ColoredValue value={value}>
+        {forceSign && value > 0 && "+"}
+        {value}
+        {suffix}
+      </ColoredValue>
+    );
+  }
+  return <Text as="span">{String(value)}</Text>;
+}
+
+function prepareTableRows(stats, transformFn, opts) {
+  return Object.entries(flattenStatsObject(stats))
+    .map(([label, rawValue]) => {
+      const value = transformFn ? transformFn(rawValue, label) : rawValue;
+      const isEmpty =
+        value == null ||
+        (typeof value === "number" && Math.abs(value) < 0.0001) ||
+        value === "0";
+      return isEmpty ? null : [label, value, opts];
     })
     .filter(Boolean);
+}
 
-  if (entries.length === 0) return null;
+/* ---------- Section Component ---------- */
+
+function StatSection({ title, stats, suffix, transform, forceSign = true }) {
+  const rows = prepareTableRows(stats, transform, { forceSign });
+  if (rows.length === 0) return null;
 
   return (
-    <Box mb={1}>
-      <Text fontSize="xs" fontWeight="bold" color="gray.400" mb={0}>
-        {label}
-      </Text>
-      <Table size="sm" variant="unstyled">
+    <Box sx={STYLES.statBlock}>
+      <Text sx={STYLES.sectionTitle}>{title}</Text>
+      <Table variant="unstyled" sx={STYLES.tableStyle}>
         <Tbody>
-          {entries.map(([key, val]) => (
-            <Tr key={key}>
-              <Td pl={0} pr={1} color="gray.500" fontSize="xs">
-                {key}
-              </Td>
-              <Td pr={0} isNumeric fontSize="xs">
-                {formatStat(val, suffix)}
-              </Td>
+          {rows.map(([label, value, opts]) => (
+            <Tr
+              key={label}
+              _hover={{
+                bg: "gray.700",
+              }}
+            >
+              <Td sx={STYLES.labelCell}>{label}</Td>
+              <Td sx={STYLES.valueCell}>{formatStatValue(value, suffix, opts)}</Td>
             </Tr>
           ))}
         </Tbody>
       </Table>
     </Box>
   );
-};
+}
 
-StatGroup.propTypes = {
-  label: PropTypes.string.isRequired,
-  data: PropTypes.object,
+StatSection.propTypes = {
+  title: PropTypes.string.isRequired,
+  stats: PropTypes.object,
   suffix: PropTypes.string,
   transform: PropTypes.func,
+  forceSign: PropTypes.bool,
 };
 
-const AttackSpeed = ({ value }) => {
-  if (value == null) return null;
-  return (
-    <Box mb={1}>
-      <Text fontSize="xs" fontWeight="bold" color="gray.400" mb={0}>
-        Attack Speed
-      </Text>
-      <Text fontSize="xs" color="gray.100">
-        {value}
-      </Text>
-    </Box>
-  );
-};
-
-AttackSpeed.propTypes = {
-  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-};
-
-const AugmentationBonus = ({ bonuses }) => {
-  const items = Array.isArray(bonuses)
-    ? bonuses.filter((a) => a.value !== 0)
-    : [];
-  if (items.length === 0) return null;
-
-  return (
-    <Box mb={1}>
-      <Text fontSize="xs" fontWeight="bold" color="gray.400" mb={0}>
-        Augmentation Bonus
-      </Text>
-      <Table size="sm" variant="unstyled">
-        <Tbody>
-          {items.map(({ stat, value }, i) => (
-            <Tr key={i}>
-              <Td pl={0} pr={1} color="gray.500" fontSize="xs">
-                {stat}
-              </Td>
-              <Td pr={0} isNumeric fontSize="xs">
-                {formatStat(value)}
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </Box>
-  );
-};
-
-AugmentationBonus.propTypes = {
-  bonuses: PropTypes.arrayOf(
-    PropTypes.shape({
-      stat: PropTypes.string.isRequired,
-      value: PropTypes.number.isRequired,
-    })
-  ),
-};
+/* ---------- Tooltip Principal ---------- */
 
 export default function ItemStatTooltip({ item }) {
   const stats = item.equipmentStats || {};
-  const req = { Requires: item.requiredLevel || {} };
+
+  const augmentationBonuses = (stats.augmentationBonus || []).reduce(
+    (obj, { stat, value }) => {
+      if (value) obj[stat] = value;
+      return obj;
+    },
+    {}
+  );
+
+  const STAT_SECTIONS = [
+    {
+      title: "Requires",
+      stats:
+        typeof item.requiredLevel === "object"
+          ? item.requiredLevel
+          : { Level: item.requiredLevel },
+      forceSign: false,
+    },
+    {
+      title: "Attack Speed",
+      stats: { "": stats.attackSpeed },
+      suffix: "s",
+      forceSign: false,
+    },
+
+    { title: "Offensive Stats", stats: stats.weaponBonus },
+    {
+      title: "Crit Stats",
+      stats: stats.offensiveCritical,
+      suffix: "%",
+      transform: (v, k) =>
+        k === "chance" ? +(v * 100).toFixed(1) : +v.toFixed(2),
+    },
+    {
+      title: "Offensive Accuracies",
+      stats: stats.offensiveAccuracyAffinityRating,
+    },
+    {
+      title: "Offensive Affinities",
+      stats: stats.offensiveDamageAffinity,
+      suffix: "%",
+      transform: (v) => +((v - 1) * 100).toFixed(1),
+    },
+
+    { title: "Defensive Stats", stats: stats.armorBonus },
+    {
+      title: "Hit Multipliers",
+      stats: stats.hitMults,
+      suffix: "%",
+      transform: (v, k) =>
+        k === "minimum"
+          ? +((v - 0.25) * 100).toFixed(1)
+          : k === "maximum"
+          ? +((v - 1) * 100).toFixed(1)
+          : v,
+    },
+
+    { title: "Augmentation Bonus", stats: augmentationBonuses },
+  ];
 
   return (
-    <Box
-      bg="gray.800"
-      border="1px solid"
-      borderColor="gray.700"
-      borderRadius="md"
-      p={3}
-    >
-      <Grid
-        templateAreas={`
-          "core offensive"
-          "defensive offensive"
-          "augment augment"
-        `}
-        gridTemplateColumns="repeat(2, minmax(0, 1fr))"
-        columnGap={4}
-        rowGap={2}
-      >
-        <Box gridArea="core">
-          <StatGroup label="Requires" data={req.Requires} />
-          <AttackSpeed value={stats.attackSpeed} />
-        </Box>
-
-        <Box gridArea="offensive">
-          <StatGroup label="Offensive Stats" data={stats.weaponBonus} />
-          <StatGroup
-            label="Crit Stats"
-            data={stats.offensiveCritical}
-            transform={(v, key) =>
-              key === "chance"
-                ? parseFloat((v * 100).toFixed(1))
-                : parseFloat(v.toFixed(2))
-            }
-            suffix="%"
+    <Box sx={STYLES.wrapper}>
+      <Flex wrap="wrap" gap={3}>
+        {STAT_SECTIONS.map((section) => (
+          <StatSection
+            key={section.title}
+            title={section.title}
+            stats={section.stats}
+            suffix={section.suffix}
+            transform={section.transform}
+            forceSign={section.forceSign ?? true}
           />
-          <StatGroup
-            label="Offensive Accuracies"
-            data={stats.offensiveAccuracyAffinityRating}
-          />
-          <StatGroup
-            label="Offensive Affinities"
-            data={stats.offensiveDamageAffinity}
-            transform={(v) => parseFloat(((v - 1) * 100).toFixed(1))}
-            suffix="%"
-          />
-        </Box>
-
-        <Box gridArea="defensive">
-          <StatGroup label="Defensive Stats" data={stats.armorBonus} />
-          <StatGroup
-            label="Hit Multipliers"
-            data={stats.hitMults}
-            transform={(v, key) => {
-              if (key === "minimum")
-                return parseFloat(((v - 0.25) * 100).toFixed(1));
-              if (key === "maximum")
-                return parseFloat(((v - 1.0) * 100).toFixed(1));
-              return v;
-            }}
-            suffix="%"
-          />
-        </Box>
-
-        <Box gridArea="augment">
-          <AugmentationBonus bonuses={stats.augmentationBonus} />
-        </Box>
-      </Grid>
+        ))}
+      </Flex>
     </Box>
   );
 }
@@ -192,6 +231,6 @@ export default function ItemStatTooltip({ item }) {
 ItemStatTooltip.propTypes = {
   item: PropTypes.shape({
     equipmentStats: PropTypes.object,
-    requiredLevel: PropTypes.object,
+    requiredLevel: PropTypes.oneOfType([PropTypes.number, PropTypes.object]),
   }).isRequired,
 };
