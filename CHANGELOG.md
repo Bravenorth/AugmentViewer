@@ -2,6 +2,33 @@
 
 ---
 
+## [1.0.3] - 2025-05-22
+
+### 🧮 Augment Calculator Enhancements
+- **Summary UI refactor**:
+  - Material lines now display:
+    - `Log: 900 (Estimated) / 1000 (Max)`
+    - `Gold: 169,200 🪙 (estimated) / 188,000 🪙 (max)`
+  - Rounded values (no more decimals)
+  - Clarified structure and improved alignment
+
+- **Dual cost tracking**:
+  - Clearly separated display for **estimated cost** (with critical/quick study effects)
+  - And **maximum cost** (worst case with no procs)
+
+- Added the 🪙 emoji to better represent currency visually
+
+### 🛑 Item Detail – Augmentability Check
+- Non-augmentable items (missing `craft.augmenting`) no longer display the augment calculator
+- Instead, a message is shown:
+  > “This item is not augmentable.”
+
+### 🔧 Technical Fixes
+- Fixed missing imports (`useMemo`, Chakra components) in `Summary.jsx`
+- Rounded material quantities using `Math.round()` for accurate display and cost
+
+---
+
 ## [1.0.2] - 2025-05-21
 
 ### UI / UX Enhancements
