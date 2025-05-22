@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import staticManifest from "../data/manifest.json";
 
 export default function useMarketPrices() {
   const [prices, setPrices] = useState({});
@@ -18,22 +19,23 @@ export default function useMarketPrices() {
 
     const isDev = import.meta.env.MODE === "development";
 
-    const fetchUrl = isDev
-      ? "/api/market/manifest"
-      : "/data/manifest.json";
-
-    fetch(fetchUrl)
-      .then((res) => {
-        if (!res.ok) throw new Error("Erreur de réponse API");
-        return res.json();
-      })
-      .then((data) => {
-        const manifest = data.manifest || data;
-        processManifest(manifest);
-      })
-      .catch((err) => {
-        console.error("Erreur lors du chargement des prix :", err);
-      });
+    if (isDev) {
+      fetch("/api/market/manifest")
+        .then((res) => {
+          if (!res.ok) throw new Error("Erreur de réponse API");
+          return res.json();
+        })
+        .then((data) => {
+          const manifest = data.manifest || data;
+          processManifest(manifest);
+        })
+        .catch((err) => {
+          console.error("Erreur lors du chargement des prix :", err);
+        });
+    } else {
+      // En production : static import
+      processManifest(staticManifest.manifest || staticManifest);
+    }
 
     return () => {
       isMounted = false;
