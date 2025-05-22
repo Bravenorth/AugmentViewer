@@ -1,4 +1,3 @@
-
 import { Box, Heading, Collapse, Button } from "@chakra-ui/react";
 import { useState, useMemo, useEffect } from "react";
 import { augmentRequirements } from "../../data/augmentRequirements";
@@ -9,19 +8,6 @@ import MaterialConfig from "./MaterialConfig";
 import LevelTable from "./LevelTable";
 import Summary from "./Summary";
 
-const sharedInputStyle = {
-  bg: "gray.700",
-  color: "gray.100",
-  borderColor: "gray.600",
-};
-
-const formatDuration = (totalSeconds) => {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return `${h}h ${m}m ${s}s`;
-};
-
 export default function AugmentCalculator({ item }) {
   const [startLevel, setStartLevel] = useState(0);
   const [startProgress, setProgress] = useState(0);
@@ -31,7 +17,7 @@ export default function AugmentCalculator({ item }) {
   const [quickStudyLevel, setQuickStudyLevel] = useState(0);
   const [showTable, toggleTable] = useState(false);
   const [newMatName, setNewMatName] = useState("");
-  const [materials, setMaterials] = useState({});
+  const [materials, setMaterials] = useState([]);
 
   const prices = useMarketPrices();
 
@@ -43,10 +29,12 @@ export default function AugmentCalculator({ item }) {
   const defaultMaterials = useMemo(() => {
     const base = item.augmenting || {};
     const perCounter = {};
-    const totalCounters = augmentRequirements.slice(startLevel, targetLevel).reduce((sum, lvl, idx) => {
-      const counters = idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
-      return sum + counters;
-    }, 0);
+    const totalCounters = augmentRequirements
+      .slice(startLevel, targetLevel)
+      .reduce((sum, lvl, idx) => {
+        const counters = idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
+        return sum + counters;
+      }, 0);
 
     if (Object.keys(base).length > 0 && totalCounters > 0) {
       for (const [mat, totalQty] of Object.entries(base)) {
@@ -59,8 +47,18 @@ export default function AugmentCalculator({ item }) {
   }, [item, startLevel, targetLevel, startProgress]);
 
   useEffect(() => {
-    setMaterials(defaultMaterials);
-  }, [defaultMaterials]);
+  // Ne remplit materials qu'à la première charge (ou si item change)
+  setMaterials((prev) => {
+    if (prev.length > 0) return prev;
+    const entries = Object.entries(defaultMaterials);
+    return entries.map(([name, qty]) => ({
+      id: crypto.randomUUID(),
+      name,
+      qty,
+    }));
+  });
+}, [defaultMaterials]);
+
 
   const { totalMaterials, totalCopies, totalCounters } = useMemo(() => {
     return selectedLevels.reduce(
@@ -69,9 +67,9 @@ export default function AugmentCalculator({ item }) {
           idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
         acc.totalCounters += countersNeeded;
         acc.totalCopies += lvl.copies || 0;
-        Object.entries(materials).forEach(([mat, qtyPerCounter]) => {
-          acc.totalMaterials[mat] =
-            (acc.totalMaterials[mat] || 0) + countersNeeded * qtyPerCounter;
+        materials.forEach(({ name, qty }) => {
+          acc.totalMaterials[name] =
+            (acc.totalMaterials[name] || 0) + countersNeeded * qty;
         });
         return acc;
       },
@@ -84,25 +82,34 @@ export default function AugmentCalculator({ item }) {
     totalCounters * (1 - criticalChance / 100) * (1 - quickStudyEfficiency);
   const totalTimeSeconds = Math.round(effectiveCounters * counterTime);
 
-  const updateMaterialQty = (mat, value) =>
-    setMaterials((prev) => ({ ...prev, [mat]: isNaN(value) ? 0 : value }));
-
-  const renameMaterial = (oldName, newName) => {
-    if (!newName || newName === oldName) return;
-    setMaterials((prev) => {
-      const copy = { ...prev, [newName]: prev[oldName] };
-      delete copy[oldName];
-      return copy;
-    });
+  const updateMaterialQty = (id, value) => {
+    setMaterials((prev) =>
+      prev.map((mat) =>
+        mat.id === id ? { ...mat, qty: isNaN(value) ? 0 : value } : mat
+      )
+    );
   };
 
-  const removeMaterial = (mat) =>
-    setMaterials(({ [mat]: _, ...rest }) => rest);
+  const renameMaterial = (id, newName) => {
+    if (!newName.trim()) return;
+    setMaterials((prev) =>
+      prev.map((mat) =>
+        mat.id === id ? { ...mat, name: newName.trim() } : mat
+      )
+    );
+  };
+
+  const removeMaterial = (id) => {
+    setMaterials((prev) => prev.filter((mat) => mat.id !== id));
+  };
 
   const addMaterial = () => {
     const name = newMatName.trim();
-    if (!name || materials[name]) return;
-    setMaterials((prev) => ({ ...prev, [name]: 0 }));
+    if (!name || materials.some((m) => m.name === name)) return;
+    setMaterials((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name, qty: 0 },
+    ]);
     setNewMatName("");
   };
 

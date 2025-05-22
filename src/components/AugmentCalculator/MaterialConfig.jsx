@@ -1,4 +1,3 @@
-
 import {
   Box,
   Heading,
@@ -36,11 +35,11 @@ export default function MaterialConfig({
       </Heading>
 
       <VStack align="start" spacing={2}>
-        {Object.keys(materials).map((mat) => (
-          <HStack key={mat} spacing={2}>
+        {materials.map((mat) => (
+          <HStack key={mat.id} spacing={2}>
             <Input
-              value={mat}
-              onChange={(e) => onRename(mat, e.target.value)}
+              value={mat.name}
+              onChange={(e) => onRename(mat.id, e.target.value)}
               size="sm"
               maxW="160px"
               {...sharedInputStyle}
@@ -48,8 +47,8 @@ export default function MaterialConfig({
             <NumberInput
               size="sm"
               min={0}
-              value={materials[mat]}
-              onChange={(_, v) => onChange(mat, v)}
+              value={mat.qty}
+              onChange={(_, v) => onChange(mat.id, v)}
             >
               <NumberInputField {...sharedInputStyle} />
             </NumberInput>
@@ -57,7 +56,7 @@ export default function MaterialConfig({
               icon={<CloseIcon />}
               size="xs"
               aria-label="Remove"
-              onClick={() => onRemove(mat)}
+              onClick={() => onRemove(mat.id)}
             />
           </HStack>
         ))}

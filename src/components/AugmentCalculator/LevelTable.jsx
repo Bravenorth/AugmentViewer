@@ -1,4 +1,3 @@
-
 import {
   Table,
   Thead,
@@ -9,7 +8,13 @@ import {
 } from "@chakra-ui/react";
 
 export default function LevelTable({ levels, startLevel, materials, startProgress }) {
-  const materialKeys = Object.keys(materials);
+  // Convertit le tableau materials[] en objet { name: qty }
+  const materialMap = materials.reduce((acc, mat) => {
+    acc[mat.name] = mat.qty;
+    return acc;
+  }, {});
+
+  const materialKeys = Object.keys(materialMap);
 
   return (
     <Table size="sm" variant="simple">
@@ -35,7 +40,7 @@ export default function LevelTable({ levels, startLevel, materials, startProgres
               <Td color="gray.400">{lvl.copies}</Td>
               {materialKeys.map((mat) => (
                 <Td key={mat} color="gray.400">
-                  {counters * (materials[mat] || 0)}
+                  {Math.round(counters * (materialMap[mat] || 0))}
                 </Td>
               ))}
             </Tr>
