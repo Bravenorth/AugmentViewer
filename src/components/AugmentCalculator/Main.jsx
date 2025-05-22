@@ -115,7 +115,6 @@ export default function AugmentCalculator({ item }) {
 
   return (
     <Box w="100%" bg="gray.800" border="1px solid" borderColor="gray.700" borderRadius="md" p={6}>
-      <Heading size="sm" mb={4} color="gray.100">Augment Calculator</Heading>
 
       <Box mb={4} display="flex" gap={4} flexWrap="wrap">
         <LevelSelector label="Start level" value={startLevel} onChange={setStartLevel} />
