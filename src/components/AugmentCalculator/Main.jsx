@@ -32,7 +32,8 @@ export default function AugmentCalculator({ item }) {
     const totalCounters = augmentRequirements
       .slice(startLevel, targetLevel)
       .reduce((sum, lvl, idx) => {
-        const counters = idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
+        const counters =
+          idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
         return sum + counters;
       }, 0);
 
@@ -47,35 +48,47 @@ export default function AugmentCalculator({ item }) {
   }, [item, startLevel, targetLevel, startProgress]);
 
   useEffect(() => {
-  // Ne remplit materials qu'à la première charge (ou si item change)
-  setMaterials((prev) => {
-    if (prev.length > 0) return prev;
-    const entries = Object.entries(defaultMaterials);
-    return entries.map(([name, qty]) => ({
-      id: crypto.randomUUID(),
-      name,
-      qty,
-    }));
-  });
-}, [defaultMaterials]);
+    setMaterials((prev) => {
+      if (prev.length > 0) return prev;
+      const entries = Object.entries(defaultMaterials);
+      return entries.map(([name, qty]) => ({
+        id: crypto.randomUUID(),
+        name,
+        qty,
+      }));
+    });
+  }, [defaultMaterials]);
 
+  const { maxMaterials, totalMaterials, totalCopies, totalCounters } =
+    useMemo(() => {
+      const effectiveRatio = 1 - criticalChance / 100;
 
-  const { totalMaterials, totalCopies, totalCounters } = useMemo(() => {
-    return selectedLevels.reduce(
-      (acc, lvl, idx) => {
-        const countersNeeded =
-          idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
-        acc.totalCounters += countersNeeded;
-        acc.totalCopies += lvl.copies || 0;
-        materials.forEach(({ name, qty }) => {
-          acc.totalMaterials[name] =
-            (acc.totalMaterials[name] || 0) + countersNeeded * qty;
-        });
-        return acc;
-      },
-      { totalMaterials: {}, totalCopies: 0, totalCounters: 0 }
-    );
-  }, [selectedLevels, startProgress, materials]);
+      const result = selectedLevels.reduce(
+        (acc, lvl, idx) => {
+          const countersNeeded =
+            idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
+          acc.totalCounters += countersNeeded;
+          acc.totalCopies += lvl.copies || 0;
+
+          materials.forEach(({ name, qty }) => {
+            const full = countersNeeded * qty;
+            acc.maxMaterials[name] = (acc.maxMaterials[name] || 0) + full;
+            acc.totalMaterials[name] =
+              (acc.totalMaterials[name] || 0) + full * effectiveRatio;
+          });
+
+          return acc;
+        },
+        {
+          maxMaterials: {},
+          totalMaterials: {},
+          totalCopies: 0,
+          totalCounters: 0,
+        }
+      );
+
+      return result;
+    }, [selectedLevels, startProgress, materials, criticalChance, quickStudyLevel]);
 
   const quickStudyEfficiency = Math.min(quickStudyLevel * 0.04, 0.8);
   const effectiveCounters =
@@ -114,15 +127,47 @@ export default function AugmentCalculator({ item }) {
   };
 
   return (
-    <Box w="100%" bg="gray.800" border="1px solid" borderColor="gray.700" borderRadius="md" p={6}>
-
+    <Box
+      w="100%"
+      bg="gray.800"
+      border="1px solid"
+      borderColor="gray.700"
+      borderRadius="md"
+      p={6}
+    >
       <Box mb={4} display="flex" gap={4} flexWrap="wrap">
-        <LevelSelector label="Start level" value={startLevel} onChange={setStartLevel} />
-        <CounterInput label="Start counters done" value={startProgress} max={augmentRequirements[startLevel]?.counter || 0} onChange={setProgress} />
-        <LevelSelector label="Target level" value={targetLevel} onChange={setTargetLevel} />
-        <CounterInput label="Time per counter (s)" value={counterTime} onChange={setCounterTime} />
-        <CounterInput label="Critical augment chance (%)" value={criticalChance} onChange={setCriticalChance} />
-        <CounterInput label="Quick Study level (0-20)" value={quickStudyLevel} max={20} onChange={setQuickStudyLevel} />
+        <LevelSelector
+          label="Start level"
+          value={startLevel}
+          onChange={setStartLevel}
+        />
+        <CounterInput
+          label="Start counters done"
+          value={startProgress}
+          max={augmentRequirements[startLevel]?.counter || 0}
+          onChange={setProgress}
+        />
+        <LevelSelector
+          label="Target level"
+          value={targetLevel}
+          onChange={setTargetLevel}
+        />
+        <CounterInput
+          label="Time per counter (s)"
+          value={counterTime}
+          onChange={setCounterTime}
+        />
+        <CounterInput
+          label="Critical augment chance (%)"
+          value={criticalChance}
+          onChange={setCriticalChance}
+        />
+        <CounterInput
+          label="Quick Study level (0-20)"
+          value={quickStudyLevel}
+          max={20}
+          onChange={setQuickStudyLevel}
+        />
       </Box>
 
       <MaterialConfig
@@ -135,17 +180,34 @@ export default function AugmentCalculator({ item }) {
         onAdd={addMaterial}
       />
 
-      <Button size="sm" bg="gray.700" _hover={{ bg: "gray.600" }} onClick={() => toggleTable((v) => !v)} mb={2}>
+      <Button
+        size="sm"
+        bg="gray.700"
+        _hover={{ bg: "gray.600" }}
+        onClick={() => toggleTable((v) => !v)}
+        mb={2}
+      >
         {showTable ? "Hide Level Table" : "Show Level Table"}
       </Button>
 
       <Collapse in={showTable} animateOpacity>
         <Box overflowX="auto" mt={2}>
-          <LevelTable levels={selectedLevels} startLevel={startLevel} materials={materials} startProgress={startProgress} />
+          <LevelTable
+            levels={selectedLevels}
+            startLevel={startLevel}
+            materials={materials}
+            startProgress={startProgress}
+          />
         </Box>
       </Collapse>
 
-      <Summary totalMaterials={totalMaterials} totalCopies={totalCopies} totalTimeSeconds={totalTimeSeconds} prices={prices} />
+      <Summary
+        totalMaterials={totalMaterials}
+        maxMaterials={maxMaterials}
+        totalCopies={totalCopies}
+        totalTimeSeconds={totalTimeSeconds}
+        prices={prices}
+      />
     </Box>
   );
 }
