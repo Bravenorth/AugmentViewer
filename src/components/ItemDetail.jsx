@@ -23,6 +23,9 @@ const rarityColors = {
 
 export default function ItemDetail({ item, onBack }) {
   const stats = item.equipmentStats || {};
+  const isAugmentable =
+    item.craft?.augmenting &&
+    Object.keys(item.craft.augmenting).length > 0;
 
   return (
     <Box w="100%" maxW="1800px" mx="auto" px={6} mt={6}>
@@ -127,17 +130,26 @@ export default function ItemDetail({ item, onBack }) {
           <Text fontSize="md" fontWeight="bold" mb={2} color="gray.100">
             Augment Calculator
           </Text>
-          <Text fontSize="sm" color="gray.400">
-            This panel will allow you to calculate total augment cost, level targets, and more based on item data.
-          </Text>
 
-          <Box my={4} h="1px" bg="gray.600" />
+          {isAugmentable ? (
+            <>
+              <Text fontSize="sm" color="gray.400">
+                This panel will allow you to calculate total augment cost, level targets, and more based on item data.
+              </Text>
 
-          <Text fontSize="sm" color="red.500" mb={2}>
-            WORK IN PROGRESS – Base material and recipe data may be incomplete or approximative.
-          </Text>
+              <Box my={4} h="1px" bg="gray.600" />
 
-          <AugmentCalculator item={item} />
+              <Text fontSize="sm" color="red.500" mb={2}>
+                WORK IN PROGRESS – Base material and recipe data may be incomplete or approximative.
+              </Text>
+
+              <AugmentCalculator item={item} />
+            </>
+          ) : (
+            <Text fontSize="sm" color="gray.500" mt={2}>
+              This item is <strong>not augmentable</strong>.
+            </Text>
+          )}
         </Box>
       </Flex>
     </Box>
