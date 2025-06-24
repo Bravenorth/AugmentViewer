@@ -59,11 +59,11 @@ export default function AugmentCalculator({ item }) {
     });
   }, [defaultMaterials]);
 
-  const { maxMaterials, totalMaterials, totalCopies, totalCounters } =
-    useMemo(() => {
-      const effectiveRatio = 1 - criticalChance / 100;
+  const quickStudyEfficiency = Math.min(quickStudyLevel * 0.04, 0.8);
 
-      const result = selectedLevels.reduce(
+  const { maxMaterials, totalMaterials, totalCopies, totalCounters } = useMemo(
+    () => {
+      const baseTotals = selectedLevels.reduce(
         (acc, lvl, idx) => {
           const countersNeeded =
             idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
@@ -71,26 +71,32 @@ export default function AugmentCalculator({ item }) {
           acc.totalCopies += lvl.copies || 0;
 
           materials.forEach(({ name, qty }) => {
-            const full = countersNeeded * qty;
-            acc.maxMaterials[name] = (acc.maxMaterials[name] || 0) + full;
-            acc.totalMaterials[name] =
-              (acc.totalMaterials[name] || 0) + full * effectiveRatio;
+            const amount = countersNeeded * qty;
+            acc.maxMaterials[name] = (acc.maxMaterials[name] || 0) + amount;
           });
 
           return acc;
         },
-        {
-          maxMaterials: {},
-          totalMaterials: {},
-          totalCopies: 0,
-          totalCounters: 0,
-        }
+        { maxMaterials: {}, totalMaterials: {}, totalCopies: 0, totalCounters: 0 }
       );
 
-      return result;
-    }, [selectedLevels, startProgress, materials, criticalChance, quickStudyLevel]);
+      const effectiveRatio =
+        (1 - criticalChance / 100) * (1 - quickStudyEfficiency);
 
-  const quickStudyEfficiency = Math.min(quickStudyLevel * 0.04, 0.8);
+      Object.entries(baseTotals.maxMaterials).forEach(([name, qty]) => {
+        baseTotals.totalMaterials[name] = qty * effectiveRatio;
+      });
+
+      return baseTotals;
+    }, [
+      selectedLevels,
+      startProgress,
+      materials,
+      criticalChance,
+      quickStudyLevel,
+    ]
+  );
+
   const effectiveCounters =
     totalCounters * (1 - criticalChance / 100) * (1 - quickStudyEfficiency);
   const totalTimeSeconds = Math.round(effectiveCounters * counterTime);
