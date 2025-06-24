@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import ItemSearch from "./components/ItemSearch";
 import ItemDetail from "./components/ItemDetail";
-import VersionBadge from "./components/VersionBadge"; // ✅ nouvelle importation
+import VersionBadge from "./components/common/VersionBadge";
 
 export default function App() {
   const [selectedItem, setSelectedItem] = useState(null);
