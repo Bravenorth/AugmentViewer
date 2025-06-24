@@ -51,8 +51,13 @@ npm run dev
 
 ```
 src/
-├── components/        # ItemSearch, ItemDetail, Tooltip, etc.
-├── data/              # combined_items.json
+├── components/
+│   ├── AugmentCalculator/
+│   ├── ItemDetail/
+│   ├── ItemSearch/
+│   └── common/
+├── data/
+├── hooks/
 ├── App.jsx
 ├── main.jsx
 ```
