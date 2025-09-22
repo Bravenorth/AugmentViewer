@@ -2,7 +2,30 @@
 
 ---
 
-## [1.0.3] - 2025-05-22
+## [0.2.0] - 2025-09-22
+
+### Project Restructure & Architecture
+- Adopted a feature-first layout under `src/features/items` with colocated components, utilities, and augment calculator modules.
+- Added `src/app/layout/AppLayout.jsx` plus `Header.jsx` / `Footer.jsx` to centralise the shell and simplify the main entry point.
+- Promoted shared UI into `src/shared/components/VersionBadge.jsx` and introduced `src/features/items/index.js` for clean barrel imports.
+
+### Item Experience Improvements
+- Item search now lists only augmentable entries via the shared `isAugmentable` helper.
+- Item detail reuses the same helper and the relocated augment calculator + tooltip components.
+- Level selector now derives labels from `augmentRequirements`, unlocking the full augment range.
+
+### Augment Calculator Fixes
+- Quick Study now shortens only the time estimate while material costs remain unchanged.
+- Default material sources prioritise `craft.scrapping` (per-counter costs) before falling back to `craft.augmenting` totals.
+- Removed market price fetching and simplified the summary to focus on materials, copies, and total time.
+
+### Cleanup
+- Removed obsolete comments/imports and the legacy `components/` tree remnants.
+- Replaced random React keys in item cards with stable identifiers.
+- Deleted the unused `useMarketPrices` hook and manifest data.
+
+---
+## [0.1.3] - 2025-05-22
 
 ### 🧮 Augment Calculator Enhancements
 - **Summary UI refactor**:
@@ -29,7 +52,7 @@
 
 ---
 
-## [1.0.2] - 2025-05-21
+## [0.1.2] - 2025-05-21
 
 ### UI / UX Enhancements
 - Completely revamped `ItemStatTooltip` layout for better readability:
@@ -71,7 +94,7 @@
 
 ---
 
-## [1.0.1] - 2025-05-18
+## [0.1.1] - 2025-05-18
 
 ### Optimizations
 - Refactored `combined_items.json`:
@@ -104,9 +127,12 @@
 
 ---
 
-## [1.0.0] - 2025-05-17
+## [0.1.0] - 2025-05-17
 
 - Initial public release
 - Implemented `ItemSearch` to browse augmentable items
 - Clicking an item opens a detail panel
 - Using `combined_items.json` as initial item database
+
+
+
