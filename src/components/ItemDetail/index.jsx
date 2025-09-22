@@ -1,4 +1,3 @@
-// src/components/ItemDetail.jsx
 import {
   Box,
   Text,
@@ -42,7 +41,6 @@ export default function ItemDetail({ item, onBack }) {
       </Button>
 
       <Flex gap={6} direction={{ base: "column", md: "row" }} align="flex-start">
-        {/* LEFT - ITEM STATS */}
         <Box
           flex="1.4"
           bg="gray.800"
@@ -52,12 +50,9 @@ export default function ItemDetail({ item, onBack }) {
           p={5}
           minW={0}
         >
-          {/* TITLE */}
           <Text fontSize="lg" fontWeight="bold" mb={2} color="gray.100">
             {item.name}
           </Text>
-
-          {/* METADATA TAGS */}
           <Wrap mb={3} spacing={2}>
             {item.rarity && (
               <Tag size="sm" colorScheme={rarityColors[item.rarity] || "gray"}>
@@ -85,8 +80,6 @@ export default function ItemDetail({ item, onBack }) {
               </Tag>
             )}
           </Wrap>
-
-          {/* EXTRA TAGS */}
           {item.tags?.length > 0 && (
             <Wrap mb={3} spacing={1}>
               {item.tags.map((tag) => (
@@ -96,8 +89,6 @@ export default function ItemDetail({ item, onBack }) {
               ))}
             </Wrap>
           )}
-
-          {/* DESCRIPTION */}
           {item.extraTooltipInfo && (
             <>
               <Divider mb={3} borderColor="gray.700" />
@@ -111,12 +102,8 @@ export default function ItemDetail({ item, onBack }) {
           )}
 
           <Divider mb={4} borderColor="gray.600" />
-
-          {/* STATS TOOLTIP STYLE */}
           <ItemStatTooltip item={item} />
         </Box>
-
-        {/* RIGHT - AUGMENT CALCULATOR */}
         <Box
           flex="1"
           bg="gray.800"
@@ -154,3 +141,5 @@ export default function ItemDetail({ item, onBack }) {
     </Box>
   );
 }
+
+

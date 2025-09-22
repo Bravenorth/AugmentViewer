@@ -1,4 +1,3 @@
-// src/components/ItemSearch.jsx
 import {
   Box,
   Input,
@@ -218,4 +217,5 @@ export default function ItemSearch({ onSelectItem }) {
     </VStack>
   );
 }
+
 

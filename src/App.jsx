@@ -17,7 +17,6 @@ export default function App() {
 
   return (
     <>
-      {/* Global styles patch for select options */}
       <style>
         {`
           select, option {
@@ -34,7 +33,6 @@ export default function App() {
         display="flex"
         flexDirection="column"
       >
-        {/* Header */}
         <Box
           as="header"
           py={4}
@@ -54,7 +52,6 @@ export default function App() {
           </Text>
         </Box>
 
-        {/* Main Content */}
         <Box as="main" flex="1" py={6} px={{ base: 4, md: 10 }}>
           {!selectedItem ? (
             <ItemSearch onSelectItem={setSelectedItem} />
@@ -66,7 +63,6 @@ export default function App() {
           )}
         </Box>
 
-        {/* Footer */}
         <Box
           as="footer"
           py={3}
@@ -88,7 +84,7 @@ export default function App() {
             color="gray.400"
           >
             <Text textAlign={{ base: "center", sm: "left" }}>
-              &copy; {new Date().getFullYear()}{" "}
+              &copy; {new Date().getFullYear()} {" "}
               <Link
                 href="https://discordapp.com/users/134398029317799936"
                 isExternal
@@ -97,7 +93,7 @@ export default function App() {
               >
                 Bravenorth
               </Link>{" "}
-              – Fan-made, unofficial project.
+              - Fan-made, unofficial project.
             </Text>
 
             <Flex gap={4} align="center" wrap="wrap" justify="center">
@@ -135,3 +131,5 @@ export default function App() {
     </>
   );
 }
+
+

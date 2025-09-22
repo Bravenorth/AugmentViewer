@@ -10,7 +10,6 @@ import {
 } from "@chakra-ui/react";
 import PropTypes from "prop-types";
 
-/* ---------- Styles ---------- */
 
 const STYLES = {
   wrapper: {
@@ -62,7 +61,6 @@ const STYLES = {
   },
 };
 
-/* ---------- Utils ---------- */
 
 function flattenStatsObject(stats) {
   return Object.entries(stats || {}).reduce((flat, [key, value]) => {
@@ -110,7 +108,6 @@ function prepareTableRows(stats, transformFn, opts) {
     .filter(Boolean);
 }
 
-/* ---------- Section Component ---------- */
 
 function StatSection({ title, stats, suffix, transform, forceSign = true }) {
   const rows = prepareTableRows(stats, transform, { forceSign });
@@ -146,7 +143,6 @@ StatSection.propTypes = {
   forceSign: PropTypes.bool,
 };
 
-/* ---------- Tooltip Principal ---------- */
 
 export default function ItemStatTooltip({ item }) {
   const stats = item.equipmentStats || {};
@@ -234,3 +230,4 @@ ItemStatTooltip.propTypes = {
     requiredLevel: PropTypes.oneOfType([PropTypes.number, PropTypes.object]),
   }).isRequired,
 };
+
