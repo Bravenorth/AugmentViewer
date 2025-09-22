@@ -3,7 +3,6 @@ import {
   Button,
   Collapse,
   HStack,
-  Heading,
   SimpleGrid,
   Stack,
   Tabs,
@@ -11,8 +10,6 @@ import {
   TabList,
   TabPanels,
   TabPanel,
-  Select,
-  Input,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -22,30 +19,117 @@ import CounterInput from "./CounterInput";
 import MaterialConfig from "./MaterialConfig";
 import LevelTable from "./LevelTable";
 import Summary from "./Summary";
+import getItemKey from "../../utils/getItemKey";
 
 const TOTAL_COUNTERS_ALL_LEVELS = augmentRequirements.reduce((sum, lvl) => sum + lvl.counter, 0);
+const MAX_LEVEL_INDEX = augmentRequirements.length - 1;
+const CONFIG_STORAGE_KEY = "augment-configuration-store-v1";
 
-const serializeMaterials = (list) =>
-  list.map(({ name, qty }) => ({ name, qty }));
+const DEFAULT_CONFIG = Object.freeze({
+  startLevel: 0,
+  startProgress: 0,
+  targetLevel: 7,
+  counterTime: 3,
+  criticalChance: 10,
+  quickStudyLevel: 0,
+});
 
-const deserializeMaterials = (list) =>
-  list.map(({ name, qty }) => ({ id: crypto.randomUUID(), name, qty }));
+const clamp = (value, min, max) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return typeof min === "number" ? min : 0;
+  }
+  const lowerBound = typeof min === "number" ? min : numeric;
+  const upperBound = typeof max === "number" ? max : numeric;
+  return Math.min(Math.max(numeric, lowerBound), upperBound);
+};
+
+const sanitizeConfig = (config = {}) => {
+  const merged = { ...DEFAULT_CONFIG, ...config };
+  const startLevel = clamp(Math.round(merged.startLevel), 0, MAX_LEVEL_INDEX);
+  const targetLevel = clamp(Math.round(merged.targetLevel), 0, MAX_LEVEL_INDEX);
+  const normalizedTarget = Math.max(targetLevel, startLevel);
+  const maxCounters = augmentRequirements[startLevel]?.counter;
+
+  return {
+    startLevel,
+    startProgress: clamp(merged.startProgress, 0, maxCounters),
+    targetLevel: normalizedTarget,
+    counterTime: clamp(merged.counterTime, 0, undefined),
+    criticalChance: clamp(merged.criticalChance, 0, 100),
+    quickStudyLevel: clamp(merged.quickStudyLevel, 0, 20),
+  };
+};
+
+const areConfigsEqual = (left, right) => {
+  const a = sanitizeConfig(left);
+  const b = sanitizeConfig(right);
+  return Object.keys(DEFAULT_CONFIG).every((key) => a[key] === b[key]);
+};
+
+const readConfigStore = () => {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = window.localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.error("Failed to read configuration store", error);
+    return {};
+  }
+};
+
+const writeConfigStore = (store) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(store));
+  } catch (error) {
+    console.error("Failed to persist configuration store", error);
+  }
+};
+
+const mapMaterials = (entries) =>
+  entries.map(([name, qty]) => ({
+    id: crypto.randomUUID(),
+    name,
+    qty,
+  }));
+
+const resolveLegacyConfig = (entry) => {
+  if (!entry || typeof entry !== "object") return null;
+  if (Array.isArray(entry)) return null;
+
+  if ("startLevel" in entry || "targetLevel" in entry || "counterTime" in entry) {
+    return entry;
+  }
+
+  if (Array.isArray(entry.presets)) {
+    const { presets, lastSelectedId } = entry;
+    const preferred = presets.find((preset) => preset.id === lastSelectedId) ?? presets[0];
+    if (preferred && typeof preferred === "object") {
+      return preferred.config ?? null;
+    }
+  }
+
+  return null;
+};
+
+const DEFAULT_SANITIZED_CONFIG = sanitizeConfig(DEFAULT_CONFIG);
 
 export default function AugmentCalculator({ item }) {
-  const [startLevel, setStartLevel] = useState(0);
-  const [startProgress, setProgress] = useState(0);
-  const [targetLevel, setTargetLevel] = useState(7);
-  const [counterTime, setCounterTime] = useState(3);
-  const [criticalChance, setCriticalChance] = useState(10);
-  const [quickStudyLevel, setQuickStudyLevel] = useState(0);
+  const [startLevel, setStartLevel] = useState(DEFAULT_CONFIG.startLevel);
+  const [startProgress, setProgress] = useState(DEFAULT_CONFIG.startProgress);
+  const [targetLevel, setTargetLevel] = useState(DEFAULT_CONFIG.targetLevel);
+  const [counterTime, setCounterTime] = useState(DEFAULT_CONFIG.counterTime);
+  const [criticalChance, setCriticalChance] = useState(DEFAULT_CONFIG.criticalChance);
+  const [quickStudyLevel, setQuickStudyLevel] = useState(DEFAULT_CONFIG.quickStudyLevel);
   const [newMatName, setNewMatName] = useState("");
   const [materials, setMaterials] = useState([]);
-  const [presets, setPresets] = useState([]);
-  const [selectedPresetId, setSelectedPresetId] = useState('default');
-  const [newPresetName, setNewPresetName] = useState('');
   const { isOpen: showLevelTable, onToggle: toggleLevelTable } = useDisclosure({ defaultIsOpen: false });
-
   const itemKeyRef = useRef(null);
+  const configHydratedRef = useRef(false);
+  const lastSavedConfigRef = useRef(DEFAULT_SANITIZED_CONFIG);
 
   const defaultMaterials = useMemo(() => {
     const craftData = item?.craft || {};
@@ -69,8 +153,19 @@ export default function AugmentCalculator({ item }) {
     }, {});
   }, [item]);
 
+  const applyConfig = (config) => {
+    const sanitized = sanitizeConfig(config);
+    const maxCounters = augmentRequirements[sanitized.startLevel]?.counter ?? sanitized.startProgress;
+    setStartLevel(sanitized.startLevel);
+    setTargetLevel(sanitized.targetLevel);
+    setProgress(clamp(sanitized.startProgress, 0, maxCounters));
+    setCounterTime(sanitized.counterTime);
+    setCriticalChance(sanitized.criticalChance);
+    setQuickStudyLevel(sanitized.quickStudyLevel);
+  };
+
   useEffect(() => {
-    const key = item?.id ?? item?.name ?? 'unknown-item';
+    const key = getItemKey(item) ?? "unknown-item";
     const entries = Object.entries(defaultMaterials);
     if (entries.length === 0) return;
 
@@ -81,24 +176,62 @@ export default function AugmentCalculator({ item }) {
       }
 
       itemKeyRef.current = key;
-      const mapped = entries.map(([name, qty]) => ({
-        id: crypto.randomUUID(),
-        name,
-        qty,
-      }));
-      return mapped;
+      return mapMaterials(entries);
+    });
+  }, [defaultMaterials, item]);
+
+  useEffect(() => {
+    configHydratedRef.current = false;
+    const key = getItemKey(item) ?? "unknown-item";
+    const store = readConfigStore();
+    const rawEntry = store[key];
+    const resolved = resolveLegacyConfig(rawEntry);
+    const sanitizedConfig = resolved ? sanitizeConfig(resolved) : DEFAULT_SANITIZED_CONFIG;
+
+    applyConfig(sanitizedConfig);
+    lastSavedConfigRef.current = sanitizedConfig;
+    configHydratedRef.current = true;
+  }, [item]);
+
+  useEffect(() => {
+    if (!configHydratedRef.current || !item) return;
+    const key = getItemKey(item);
+    if (!key) return;
+
+    const sanitized = sanitizeConfig({
+      startLevel,
+      startProgress,
+      targetLevel,
+      counterTime,
+      criticalChance,
+      quickStudyLevel,
     });
 
-    const defaultPreset = {
-      id: 'default',
-      name: 'Default recipe',
-      materials: entries.map(([name, qty]) => ({ name, qty })),
-    };
+    if (areConfigsEqual(sanitized, lastSavedConfigRef.current)) {
+      return;
+    }
 
-    setPresets([defaultPreset]);
-    setSelectedPresetId('default');
-    setNewPresetName('');
-  }, [defaultMaterials, item]);
+    const store = readConfigStore();
+
+    if (areConfigsEqual(sanitized, DEFAULT_CONFIG)) {
+      if (Object.prototype.hasOwnProperty.call(store, key)) {
+        delete store[key];
+        writeConfigStore(store);
+      }
+    } else {
+      store[key] = sanitized;
+      writeConfigStore(store);
+    }
+
+    lastSavedConfigRef.current = sanitized;
+  }, [startLevel, startProgress, targetLevel, counterTime, criticalChance, quickStudyLevel, item]);
+
+  useEffect(() => {
+    setProgress((prev) => {
+      const maxCounters = augmentRequirements[startLevel]?.counter;
+      return clamp(prev, 0, maxCounters);
+    });
+  }, [startLevel]);
 
   const selectedLevels = useMemo(() => {
     if (targetLevel <= startLevel) {
@@ -126,6 +259,23 @@ export default function AugmentCalculator({ item }) {
   const critRate = safeCriticalChance / 100;
   const materialMultiplier = Math.min(Math.max(1 - critRate, 0), 1);
   const countersPerTimedAction = 1 + quickStudyEfficiency;
+
+  const currentConfig = useMemo(
+    () => ({
+      startLevel,
+      startProgress: safeStartProgress,
+      targetLevel,
+      counterTime: safeCounterTime,
+      criticalChance: safeCriticalChance,
+      quickStudyLevel: safeQuickStudyLevel,
+    }),
+    [startLevel, safeStartProgress, targetLevel, safeCounterTime, safeCriticalChance, safeQuickStudyLevel]
+  );
+
+  const isDefaultConfig = useMemo(
+    () => areConfigsEqual(currentConfig, DEFAULT_CONFIG),
+    [currentConfig]
+  );
 
   const levelData = useMemo(() => {
     const breakdown = [];
@@ -216,37 +366,17 @@ export default function AugmentCalculator({ item }) {
       ...prev,
       { id: crypto.randomUUID(), name, qty: 0 },
     ]);
-    setNewMatName('');
+    setNewMatName("");
   };
 
-  const handlePresetSelect = (event) => {
-    const presetId = event.target.value;
-    setSelectedPresetId(presetId);
-    const preset = presets.find((p) => p.id === presetId);
-    if (!preset) return;
-    setMaterials(deserializeMaterials(preset.materials));
+  const handleResetConfig = () => {
+    applyConfig(DEFAULT_CONFIG);
   };
 
-  const handleSavePreset = () => {
-    const trimmed = newPresetName.trim();
-    if (!trimmed) return;
-
-    const newPreset = {
-      id: crypto.randomUUID(),
-      name: trimmed,
-      materials: serializeMaterials(materials),
-    };
-
-    setPresets((prev) => [...prev.filter((preset) => preset.name !== trimmed), newPreset]);
-    setSelectedPresetId(newPreset.id);
-    setNewPresetName('');
-  };
-
-  const resetToDefaultPreset = () => {
-    const defaultPreset = presets.find((preset) => preset.id === 'default');
-    if (!defaultPreset) return;
-    setSelectedPresetId('default');
-    setMaterials(deserializeMaterials(defaultPreset.materials));
+  const resetMaterialsToDefault = () => {
+    const entries = Object.entries(defaultMaterials);
+    if (entries.length === 0) return;
+    setMaterials(mapMaterials(entries));
   };
 
   return (
@@ -261,6 +391,17 @@ export default function AugmentCalculator({ item }) {
         <TabPanels>
           <TabPanel px={0}>
             <Stack spacing={4}>
+              <HStack justifyContent="flex-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleResetConfig}
+                  isDisabled={isDefaultConfig}
+                >
+                  Reset to defaults
+                </Button>
+              </HStack>
+
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <LevelSelector label="Start level" value={startLevel} onChange={setStartLevel} />
                 <LevelSelector label="Target level" value={targetLevel} onChange={setTargetLevel} />
@@ -302,39 +443,6 @@ export default function AugmentCalculator({ item }) {
 
           <TabPanel px={0}>
             <Stack spacing={4}>
-              <Stack
-                direction={{ base: 'column', md: 'row' }}
-                spacing={3}
-                align={{ base: 'stretch', md: 'center' }}
-              >
-                <Select
-                  value={selectedPresetId}
-                  onChange={handlePresetSelect}
-                  maxW={{ base: '100%', md: '220px' }}
-                  aria-label="Select material preset"
-                >
-                  {presets.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.name}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  placeholder="Preset name"
-                  value={newPresetName}
-                  onChange={(event) => setNewPresetName(event.target.value)}
-                  maxW={{ base: '100%', md: '220px' }}
-                />
-                <HStack spacing={2}>
-                  <Button size="sm" onClick={handleSavePreset} isDisabled={!newPresetName.trim()}>
-                    Save preset
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={resetToDefaultPreset}>
-                    Reset
-                  </Button>
-                </HStack>
-              </Stack>
-
               <MaterialConfig
                 materials={materials}
                 onChange={updateMaterialQty}
@@ -345,9 +453,14 @@ export default function AugmentCalculator({ item }) {
                 onAdd={addMaterial}
               />
 
-              <Button size="sm" variant="ghost" onClick={toggleLevelTable} alignSelf="flex-start">
-                {showLevelTable ? 'Hide level breakdown' : 'Show level breakdown'}
-              </Button>
+              <HStack spacing={2}>
+                <Button size="sm" variant="outline" onClick={resetMaterialsToDefault}>
+                  Reset materials
+                </Button>
+                <Button size="sm" variant="ghost" onClick={toggleLevelTable} alignSelf="flex-start">
+                  {showLevelTable ? "Hide level breakdown" : "Show level breakdown"}
+                </Button>
+              </HStack>
 
               <Collapse in={showLevelTable} animateOpacity>
                 <Box overflowX="auto" border="1px solid" borderColor="gray.700" borderRadius="md" p={3}>

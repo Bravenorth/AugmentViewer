@@ -6,13 +6,15 @@ import {
   Button,
   Divider,
   Flex,
+  HStack,
   Heading,
+  IconButton,
   Stack,
   Tag,
   Text,
   Wrap,
 } from "@chakra-ui/react";
-import { ArrowBackIcon, ChevronRightIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, ChevronRightIcon, StarIcon } from "@chakra-ui/icons";
 import React from "react";
 import AugmentCalculator from "./augment-calculator/AugmentCalculator";
 import ItemStatTooltip from "./ItemStatTooltip";
@@ -27,9 +29,11 @@ const rarityColors = {
   mythical: "red",
 };
 
-export default function ItemDetail({ item, onBack }) {
+export default function ItemDetail({ item, onBack, isFavorite = false, onToggleFavorite }) {
   const stats = item.equipmentStats || {};
   const isAugmentable = isItemAugmentable(item);
+  const canToggleFavorite = typeof onToggleFavorite === 'function';
+  const favoriteLabel = isFavorite ? 'Remove from favorites' : 'Add to favorites';
 
   return (
     <Stack spacing={6}>
@@ -50,9 +54,23 @@ export default function ItemDetail({ item, onBack }) {
         </Breadcrumb>
 
         <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" wrap="wrap" gap={3}>
-          <Heading size="md" color="gray.100">
-            {item.name}
-          </Heading>
+          <HStack spacing={3} align="center">
+            <Heading size="md" color="gray.100">
+              {item.name}
+            </Heading>
+            {canToggleFavorite && (
+              <IconButton
+                icon={<StarIcon />}
+                size="sm"
+                variant={isFavorite ? 'solid' : 'ghost'}
+                colorScheme="yellow"
+                aria-label={favoriteLabel}
+                aria-pressed={isFavorite}
+                onClick={() => onToggleFavorite(item)}
+                isRound
+              />
+            )}
+          </HStack>
           <Button
             variant="ghost"
             leftIcon={<ArrowBackIcon />}

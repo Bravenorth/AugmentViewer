@@ -20,14 +20,20 @@ import {
   Collapse,
   useDisclosure,
 } from "@chakra-ui/react";
-import { SearchIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import { SearchIcon, ChevronDownIcon, ChevronUpIcon, StarIcon } from "@chakra-ui/icons";
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import rawItems from "../../../data/combined_items.json";
 import isAugmentable from "../utils/isAugmentable";
+import getItemKey from "../utils/getItemKey";
 
 const ITEMS_PER_LOAD = 30;
 
-export default function ItemSearch({ onSelectItem, selectedItemId }) {
+export default function ItemSearch({
+  onSelectItem,
+  selectedItemId,
+  favoriteItemIds = [],
+  onToggleFavorite,
+}) {
   const [query, setQuery] = useState("");
   const [activeTags, setActiveTags] = useState([]);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_LOAD);
@@ -44,6 +50,8 @@ export default function ItemSearch({ onSelectItem, selectedItemId }) {
     () => Object.values(rawItems).filter((item) => item.name && isAugmentable(item)),
     []
   );
+
+  const favoriteIdsSet = useMemo(() => new Set((favoriteItemIds || []).map(String)), [favoriteItemIds]);
 
   const rarityColors = {
     common: "gray",
@@ -98,16 +106,32 @@ export default function ItemSearch({ onSelectItem, selectedItemId }) {
     )
     .filter(matchesFilters);
 
-  const visibleItems = filteredItems.slice(0, visibleCount);
+  const sortedItems = useMemo(() => {
+    if (favoriteIdsSet.size === 0) return filteredItems;
+    const favorites = [];
+    const others = [];
+
+    filteredItems.forEach((item) => {
+      const key = getItemKey(item);
+      if (key && favoriteIdsSet.has(key)) {
+        favorites.push(item);
+      } else {
+        others.push(item);
+      }
+    });
+
+    return [...favorites, ...others];
+  }, [filteredItems, favoriteIdsSet]);
+
+  const visibleItems = sortedItems.slice(0, visibleCount);
 
   useEffect(() => {
-    if (!observerRef.current || visibleItems.length >= filteredItems.length)
-      return;
+    if (!observerRef.current || visibleItems.length >= sortedItems.length) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
           setVisibleCount((prev) =>
-            Math.min(prev + ITEMS_PER_LOAD, filteredItems.length)
+            Math.min(prev + ITEMS_PER_LOAD, sortedItems.length)
           );
         }
       },
@@ -115,7 +139,7 @@ export default function ItemSearch({ onSelectItem, selectedItemId }) {
     );
     observer.observe(observerRef.current);
     return () => observer.disconnect();
-  }, [visibleItems, filteredItems]);
+  }, [visibleItems, sortedItems]);
 
   const renderResults = () => {
     if (isLoading) {
@@ -126,7 +150,7 @@ export default function ItemSearch({ onSelectItem, selectedItemId }) {
       );
     }
 
-    if (filteredItems.length === 0) {
+    if (sortedItems.length === 0) {
       return (
         <Center py={16} px={6} textAlign="center" w="100%">
           <Stack spacing={2} align="center">
@@ -144,8 +168,12 @@ export default function ItemSearch({ onSelectItem, selectedItemId }) {
     return (
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4} w="100%">
         {visibleItems.map((item, idx) => {
-          const cardKey = item.id ?? item.key ?? `${item.name ?? "item"}-${idx}`;
-          const isSelected = selectedItemId && (item.id === selectedItemId || item.key === selectedItemId);
+          const key = getItemKey(item);
+          const cardKey = key ?? `${item.name ?? "item"}-${idx}`;
+          const isSelected = selectedItemId && key === selectedItemId;
+          const isFavorite = key ? favoriteIdsSet.has(key) : false;
+          const borderColor = isSelected ? 'brand.400' : isFavorite ? 'yellow.400' : 'gray.700';
+          const hoverBorderColor = isSelected ? 'brand.300' : isFavorite ? 'yellow.300' : 'brand.300';
 
           return (
             <Box
@@ -162,16 +190,33 @@ export default function ItemSearch({ onSelectItem, selectedItemId }) {
               cursor="pointer"
               bg="gray.800"
               border="1px solid"
-              borderColor={isSelected ? 'brand.400' : 'gray.700'}
+              borderColor={borderColor}
               borderRadius="md"
               boxShadow="md"
               p={4}
               transition="all 0.2s ease"
-              _hover={{ borderColor: 'brand.300', bg: 'gray.750' }}
+              _hover={{ borderColor: hoverBorderColor, bg: 'gray.750' }}
             >
-              <Heading size="sm" color="gray.100" mb={1}>
-                {item.name}
-              </Heading>
+              <Flex justify="space-between" align="flex-start" mb={2} gap={3}>
+                <Heading size="sm" color="gray.100">
+                  {item.name}
+                </Heading>
+                <IconButton
+                  icon={<StarIcon />}
+                  size="sm"
+                  variant={isFavorite ? 'solid' : 'ghost'}
+                  colorScheme="yellow"
+                  aria-label={isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (onToggleFavorite) {
+                      onToggleFavorite(item);
+                    }
+                  }}
+                  isRound
+                />
+              </Flex>
               {item.id && (
                 <Text fontSize="xs" color="gray.400" mb={2}>
                   ID: {item.id}
