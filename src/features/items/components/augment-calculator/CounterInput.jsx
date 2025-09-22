@@ -1,13 +1,16 @@
-import { Box, Text, Input } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
+﻿import { FormControl, FormLabel, Input, Tooltip, FormHelperText } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 
-const sharedInputStyle = {
-  bg: "gray.700",
-  color: "gray.100",
-  borderColor: "gray.600",
-};
-
-export default function CounterInput({ label, value, max, onChange }) {
+export default function CounterInput({
+  label,
+  value,
+  min = 0,
+  max,
+  onChange,
+  tooltip,
+  helperText,
+  ariaLabel,
+}) {
   const [inputValue, setInputValue] = useState(String(value));
 
   useEffect(() => {
@@ -16,31 +19,47 @@ export default function CounterInput({ label, value, max, onChange }) {
 
   const clampValue = (val) => {
     let result = Number.isFinite(val) ? val : 0;
-    if (typeof max === "number" && Number.isFinite(max)) {
+    if (typeof max === 'number' && Number.isFinite(max)) {
       result = Math.min(result, max);
     }
-    return Math.max(result, 0);
+    if (typeof min === 'number' && Number.isFinite(min)) {
+      result = Math.max(result, min);
+    }
+    return result;
   };
 
   const handleBlur = () => {
-    const normalized = inputValue.replace(",", ".");
+    const normalized = inputValue.replace(',', '.');
     const parsed = parseFloat(normalized);
     const safeValue = clampValue(parsed);
     onChange(safeValue);
     setInputValue(String(safeValue));
   };
 
+  const numericValue = Number(value);
+  const isInvalid =
+    (Number.isFinite(min) && numericValue < min) ||
+    (Number.isFinite(max) && numericValue > max);
+
   return (
-    <Box>
-      <Text color="gray.300" mb={1}>{label}</Text>
-      <Input
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onBlur={handleBlur}
-        maxW="120px"
-        size="sm"
-        {...sharedInputStyle}
-      />
-    </Box>
+    <Tooltip label={tooltip} isDisabled={!tooltip} hasArrow placement="top-start">
+      <FormControl isInvalid={isInvalid} maxW="160px">
+        <FormLabel color="gray.300" fontSize="sm">
+          {label}
+        </FormLabel>
+        <Input
+          value={inputValue}
+          onChange={(event) => setInputValue(event.target.value)}
+          onBlur={handleBlur}
+          aria-label={ariaLabel || label}
+          size="sm"
+        />
+        {helperText && (
+          <FormHelperText color={isInvalid ? 'red.300' : 'gray.500'}>
+            {helperText}
+          </FormHelperText>
+        )}
+      </FormControl>
+    </Tooltip>
   );
 }

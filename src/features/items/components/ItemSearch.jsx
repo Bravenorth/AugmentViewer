@@ -1,19 +1,23 @@
 import {
   Box,
+  Center,
+  Divider,
+  Flex,
+  Heading,
+  IconButton,
   Input,
   InputGroup,
   InputLeftElement,
+  Button,
   SimpleGrid,
-  Text,
-  VStack,
-  Heading,
+  Spinner,
+  Stack,
   Tag,
   TagLabel,
-  Button,
+  Text,
   Wrap,
   WrapItem,
   Collapse,
-  IconButton,
   useDisclosure,
 } from "@chakra-ui/react";
 import { SearchIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
@@ -23,12 +27,18 @@ import isAugmentable from "../utils/isAugmentable";
 
 const ITEMS_PER_LOAD = 30;
 
-export default function ItemSearch({ onSelectItem }) {
+export default function ItemSearch({ onSelectItem, selectedItemId }) {
   const [query, setQuery] = useState("");
   const [activeTags, setActiveTags] = useState([]);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_LOAD);
+  const [isLoading, setIsLoading] = useState(true);
   const observerRef = useRef();
   const { isOpen, onToggle } = useDisclosure();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const items = useMemo(
     () => Object.values(rawItems).filter((item) => item.name && isAugmentable(item)),
@@ -107,102 +117,70 @@ export default function ItemSearch({ onSelectItem }) {
     return () => observer.disconnect();
   }, [visibleItems, filteredItems]);
 
-  return (
-    <VStack align="start" spacing={6} w="100%" maxW="1000px" mx="auto" mt={10}>
-      <InputGroup>
-        <InputLeftElement pointerEvents="none">
-          <SearchIcon color="gray.500" />
-        </InputLeftElement>
-        <Input
-          placeholder="Search for an item..."
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setVisibleCount(ITEMS_PER_LOAD);
-          }}
-          size="lg"
-          bg="gray.800"
-          color="gray.100"
-          border="1px solid"
-          borderColor="gray.700"
-          borderRadius="md"
-          fontSize="md"
-          _focus={{ borderColor: "brand.400", boxShadow: "0 0 0 1px #2c94cb" }}
-        />
-        <IconButton
-          ml={2}
-          aria-label="Toggle filters"
-          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          onClick={onToggle}
-          variant="solid"
-          size="lg"
-          bg="gray.700"
-          _hover={{ bg: "gray.600" }}
-          color="white"
-          border="1px solid"
-          borderColor="gray.600"
-        />
-      </InputGroup>
+  const renderResults = () => {
+    if (isLoading) {
+      return (
+        <Center py={16} w="100%">
+          <Spinner size="lg" color="brand.300" thickness="4px" />
+        </Center>
+      );
+    }
 
-      <Collapse in={isOpen} animateOpacity>
-        <Wrap spacing={2} mt={2}>
-          {getAllTags.map((tag) => (
-            <WrapItem key={tag}>
-              <Tag
-                size="sm"
-                variant={activeTags.includes(tag) ? "solid" : "subtle"}
-                colorScheme={activeTags.includes(tag) ? "blue" : "gray"}
-                cursor="pointer"
-                onClick={() => handleTagToggle(tag)}
-              >
-                {tag}
-              </Tag>
-            </WrapItem>
-          ))}
-          {(activeTags.length > 0 || query) && (
-            <WrapItem>
-              <Button
-                size="sm"
-                onClick={clearFilters}
-                colorScheme="red"
-                variant="outline"
-              >
-                Clear Filters
-              </Button>
-            </WrapItem>
-          )}
-        </Wrap>
-      </Collapse>
+    if (filteredItems.length === 0) {
+      return (
+        <Center py={16} px={6} textAlign="center" w="100%">
+          <Stack spacing={2} align="center">
+            <Heading size="sm" color="gray.200">
+              No items found
+            </Heading>
+            <Text fontSize="sm" color="gray.400">
+              Try adjusting your search or filters to find another augmentable item.
+            </Text>
+          </Stack>
+        </Center>
+      );
+    }
 
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5} w="100%">
+    return (
+      <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4} w="100%">
         {visibleItems.map((item, idx) => {
           const cardKey = item.id ?? item.key ?? `${item.name ?? "item"}-${idx}`;
+          const isSelected = selectedItemId && (item.id === selectedItemId || item.key === selectedItemId);
 
           return (
             <Box
               key={cardKey}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectItem(item)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelectItem(item);
+                }
+              }}
               cursor="pointer"
               bg="gray.800"
               border="1px solid"
-              borderColor="gray.700"
+              borderColor={isSelected ? 'brand.400' : 'gray.700'}
               borderRadius="md"
               boxShadow="md"
               p={4}
-              _hover={{ borderColor: "brand.400", bg: "gray.700" }}
+              transition="all 0.2s ease"
+              _hover={{ borderColor: 'brand.300', bg: 'gray.750' }}
             >
               <Heading size="sm" color="gray.100" mb={1}>
                 {item.name}
               </Heading>
               {item.id && (
-                <Text fontSize="sm" color="gray.400" mb={2}>
+                <Text fontSize="xs" color="gray.400" mb={2}>
                   ID: {item.id}
                 </Text>
               )}
               {item.rarity && (
                 <Tag
                   size="sm"
-                  colorScheme={rarityColors[item.rarity] || "gray"}
+                  colorScheme={rarityColors[item.rarity] || 'gray'}
                   variant="subtle"
                 >
                   <TagLabel>{item.rarity}</TagLabel>
@@ -212,10 +190,65 @@ export default function ItemSearch({ onSelectItem }) {
           );
         })}
       </SimpleGrid>
+    );
+  };
 
-      <div ref={observerRef} style={{ height: "20px" }} />
-    </VStack>
+  return (
+    <Stack spacing={6} w="100%">
+      <InputGroup size="md">
+        <InputLeftElement pointerEvents="none">
+          <SearchIcon color="gray.500" />
+        </InputLeftElement>
+        <Input
+          aria-label="Search for items"
+          placeholder="Search for an item..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setVisibleCount(ITEMS_PER_LOAD);
+          }}
+        />
+        <IconButton
+          ml={2}
+          aria-label={isOpen ? 'Hide filters' : 'Show filters'}
+          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          onClick={onToggle}
+          variant="ghost"
+        />
+      </InputGroup>
+
+      <Collapse in={isOpen} animateOpacity>
+        <Stack spacing={3} border="1px solid" borderColor="gray.700" borderRadius="md" p={4}>
+          <Wrap spacing={2}>
+            {getAllTags.map((tag) => (
+              <WrapItem key={tag}>
+                <Tag
+                  size="sm"
+                  variant={activeTags.includes(tag) ? 'solid' : 'subtle'}
+                  colorScheme={activeTags.includes(tag) ? 'blue' : 'gray'}
+                  cursor="pointer"
+                  onClick={() => handleTagToggle(tag)}
+                >
+                  {tag}
+                </Tag>
+              </WrapItem>
+            ))}
+          </Wrap>
+          {(activeTags.length > 0 || query) && (
+            <Flex justify="flex-end">
+              <Button size="sm" variant="outline" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            </Flex>
+          )}
+        </Stack>
+      </Collapse>
+
+      <Divider borderColor="gray.700" />
+
+      {renderResults()}
+
+      <Box ref={observerRef} h="20px" />
+    </Stack>
   );
 }
-
-

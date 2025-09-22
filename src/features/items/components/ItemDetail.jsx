@@ -1,13 +1,19 @@
 import {
   Box,
-  Text,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
   Button,
-  Tag,
-  Wrap,
-  Flex,
   Divider,
+  Flex,
+  Heading,
+  Stack,
+  Tag,
+  Text,
+  Wrap,
 } from "@chakra-ui/react";
-import { ArrowBackIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, ChevronRightIcon } from "@chakra-ui/icons";
+import React from "react";
 import AugmentCalculator from "./augment-calculator/AugmentCalculator";
 import ItemStatTooltip from "./ItemStatTooltip";
 import isItemAugmentable from "../utils/isAugmentable";
@@ -26,36 +32,56 @@ export default function ItemDetail({ item, onBack }) {
   const isAugmentable = isItemAugmentable(item);
 
   return (
-    <Box w="100%" maxW="1800px" mx="auto" px={6} mt={6}>
-      <Button
-        leftIcon={<ArrowBackIcon />}
-        onClick={onBack}
-        variant="solid"
-        colorScheme="gray"
-        size="sm"
-        bg="gray.600"
-        _hover={{ bg: "gray.500" }}
-        mb={4}
-      >
-        Back to Search
-      </Button>
+    <Stack spacing={6}>
+      <Stack spacing={3}>
+        <Breadcrumb
+          separator={<ChevronRightIcon color="gray.500" boxSize={3} />}
+          fontSize="sm"
+          color="gray.400"
+        >
+          <BreadcrumbItem>
+            <BreadcrumbLink as="button" onClick={onBack} color="brand.300" cursor="pointer">
+              Items
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>
+            <BreadcrumbLink color="gray.200">{item.name}</BreadcrumbLink>
+          </BreadcrumbItem>
+        </Breadcrumb>
 
-      <Flex gap={6} direction={{ base: "column", md: "row" }} align="flex-start">
-        <Box
-          flex="1.4"
+        <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" wrap="wrap" gap={3}>
+          <Heading size="md" color="gray.100">
+            {item.name}
+          </Heading>
+          <Button
+            variant="ghost"
+            leftIcon={<ArrowBackIcon />}
+            onClick={onBack}
+            aria-label="Back to search results"
+          >
+            Back to search
+          </Button>
+        </Flex>
+      </Stack>
+
+      <Flex
+        direction={{ base: 'column', xl: 'row' }}
+        align="flex-start"
+        gap={6}
+      >
+        <Stack
+          spacing={5}
+          flex={{ base: '1', xl: '1.1' }}
           bg="gray.800"
           border="1px solid"
           borderColor="gray.700"
           borderRadius="md"
-          p={5}
+          p={6}
           minW={0}
         >
-          <Text fontSize="lg" fontWeight="bold" mb={2} color="gray.100">
-            {item.name}
-          </Text>
-          <Wrap mb={3} spacing={2}>
+          <Wrap spacing={2}>
             {item.rarity && (
-              <Tag size="sm" colorScheme={rarityColors[item.rarity] || "gray"}>
+              <Tag size="sm" colorScheme={rarityColors[item.rarity] || 'gray'}>
                 {item.rarity}
               </Tag>
             )}
@@ -80,8 +106,9 @@ export default function ItemDetail({ item, onBack }) {
               </Tag>
             )}
           </Wrap>
+
           {item.tags?.length > 0 && (
-            <Wrap mb={3} spacing={1}>
+            <Wrap spacing={1}>
               {item.tags.map((tag) => (
                 <Tag key={tag} size="sm" colorScheme="gray">
                   {tag}
@@ -89,57 +116,51 @@ export default function ItemDetail({ item, onBack }) {
               ))}
             </Wrap>
           )}
+
           {item.extraTooltipInfo && (
-            <>
-              <Divider mb={3} borderColor="gray.700" />
-              <Text fontSize="xs" color="gray.500" fontWeight="bold" mb={1}>
+            <Stack spacing={3}>
+              <Divider borderColor="gray.700" />
+              <Text fontSize="xs" color="gray.500" fontWeight="bold">
                 Description
               </Text>
-              <Text fontSize="sm" mb={3} color="gray.300" fontStyle="italic">
+              <Text fontSize="sm" color="gray.300" fontStyle="italic">
                 {item.extraTooltipInfo}
               </Text>
-            </>
+            </Stack>
           )}
 
-          <Divider mb={4} borderColor="gray.600" />
+          <Divider borderColor="gray.700" />
           <ItemStatTooltip item={item} />
-        </Box>
+        </Stack>
+
         <Box
-          flex="1"
+          flex={{ base: '1', xl: '1' }}
+          w="100%"
           bg="gray.800"
           border="1px solid"
           borderColor="gray.700"
           borderRadius="md"
           p={6}
-          minW={0}
         >
-          <Text fontSize="md" fontWeight="bold" mb={2} color="gray.100">
-            Augment Calculator
-          </Text>
-
-          {isAugmentable ? (
-            <>
-              <Text fontSize="sm" color="gray.400">
-                This panel will allow you to calculate total augment cost, level targets, and more based on item data.
-              </Text>
-
-              <Box my={4} h="1px" bg="gray.600" />
-
-              <Text fontSize="sm" color="red.500" mb={2}>
-                WORK IN PROGRESS - Base material and recipe data may be incomplete or approximative.
-              </Text>
-
+          <Stack spacing={4}>
+            <Heading size="sm" color="gray.100">
+              Augment Planner
+            </Heading>
+            {isAugmentable ? (
               <AugmentCalculator item={item} />
-            </>
-          ) : (
-            <Text fontSize="sm" color="gray.500" mt={2}>
-              This item is <strong>not augmentable</strong>.
-            </Text>
-          )}
+            ) : (
+              <Stack spacing={3} align="flex-start">
+                <Text fontSize="sm" color="gray.400">
+                  This item cannot be augmented.
+                </Text>
+                <Button size="sm" onClick={onBack} variant="outline">
+                  Back to search
+                </Button>
+              </Stack>
+            )}
+          </Stack>
         </Box>
       </Flex>
-    </Box>
+    </Stack>
   );
 }
-
-

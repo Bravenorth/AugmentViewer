@@ -4,25 +4,25 @@
 
 ## [0.2.0] - 2025-09-22
 
-### Project Restructure & Architecture
-- Adopted a feature-first layout under `src/features/items` with colocated components, utilities, and augment calculator modules.
-- Added `src/app/layout/AppLayout.jsx` plus `Header.jsx` / `Footer.jsx` to centralise the shell and simplify the main entry point.
-- Promoted shared UI into `src/shared/components/VersionBadge.jsx` and introduced `src/features/items/index.js` for clean barrel imports.
+### UI Foundation & Theme
+- Centralised Chakra styling in `src/theme.js` (consistent spacing, focus rings, tooltips, field styling) so buttons, inputs, and selects share one visual language.
+- Removed inline select hacks by relying on theme overrides.
 
-### Item Experience Improvements
-- Item search now lists only augmentable entries via the shared `isAugmentable` helper.
-- Item detail reuses the same helper and the relocated augment calculator + tooltip components.
-- Level selector now derives labels from `augmentRequirements`, unlocking the full augment range.
+### Layout & Navigation
+- Introduced `AppLayout` with responsive max-width containers and a two-column shell (search + detail) and added a friendly empty state on first load.
+- Added breadcrumb/back affordance and harmonised spacing within the detail view for easier navigation.
 
-### Augment Calculator Fixes
-- Quick Study now shortens only the time estimate while material costs remain unchanged.
-- Default material sources prioritise `craft.scrapping` (per-counter costs) before falling back to `craft.augmenting` totals.
-- Removed market price fetching and simplified the summary to focus on materials, copies, and total time.
+### Item Explorer Enhancements
+- Refined `ItemSearch` spacing, added loading and no-results states, stable card highlighting, and keyboard-friendly interactions.
+
+### Augment Planner Updates
+- Rebuilt the calculator into tabs (Configuration / Materials / Summary) and added preset save/reset support.
+- Enhanced inputs with tooltips, helper text, validation, and maintained the full +0 starting range.
+- Polished the summary display with icons, headings, and clearer hierarchy.
 
 ### Cleanup
-- Removed obsolete comments/imports and the legacy `components/` tree remnants.
-- Replaced random React keys in item cards with stable identifiers.
-- Deleted the unused `useMarketPrices` hook and manifest data.
+- Removed legacy inline styles, obsolete imports, and tightened component exports under `src/features/items`.
+- Ensured only augmentable items surface through the shared helper and kept lists accessible with deterministic keys.
 
 ---
 ## [0.1.3] - 2025-05-22
@@ -133,6 +133,7 @@
 - Implemented `ItemSearch` to browse augmentable items
 - Clicking an item opens a detail panel
 - Using `combined_items.json` as initial item database
+
 
 
 

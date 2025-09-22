@@ -1,11 +1,5 @@
 ﻿import { augmentRequirements } from "../../../../data/augmentRequirements";
-import { Box, Select, Text } from "@chakra-ui/react";
-
-const sharedInputStyle = {
-  bg: "gray.700",
-  color: "gray.100",
-  borderColor: "gray.600",
-};
+import { FormControl, FormLabel, Select } from "@chakra-ui/react";
 
 export default function LevelSelector({ label, value, onChange }) {
   const options = augmentRequirements.map((_, index) => ({
@@ -14,19 +8,17 @@ export default function LevelSelector({ label, value, onChange }) {
   }));
 
   return (
-    <Box>
-      <Text color="gray.300" mb={1}>{label}</Text>
-      <Select
-        value={value}
-        onChange={(e) => onChange(+e.target.value)}
-        size="sm"
-        maxW="100px"
-        {...sharedInputStyle}
-      >
+    <FormControl maxW="160px">
+      <FormLabel color="gray.300" fontSize="sm">
+        {label}
+      </FormLabel>
+      <Select value={value} onChange={(event) => onChange(+event.target.value)} size="sm">
         {options.map(({ value: optionValue, label: optionLabel }) => (
-          <option key={optionValue} value={optionValue}>{optionLabel}</option>
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
         ))}
       </Select>
-    </Box>
+    </FormControl>
   );
 }

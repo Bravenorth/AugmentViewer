@@ -1,4 +1,20 @@
-import { Box, Heading, Collapse, Button } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Collapse,
+  HStack,
+  Heading,
+  SimpleGrid,
+  Stack,
+  Tabs,
+  Tab,
+  TabList,
+  TabPanels,
+  TabPanel,
+  Select,
+  Input,
+  useDisclosure,
+} from "@chakra-ui/react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { augmentRequirements } from "../../../../data/augmentRequirements";
 import LevelSelector from "./LevelSelector";
@@ -9,6 +25,12 @@ import Summary from "./Summary";
 
 const TOTAL_COUNTERS_ALL_LEVELS = augmentRequirements.reduce((sum, lvl) => sum + lvl.counter, 0);
 
+const serializeMaterials = (list) =>
+  list.map(({ name, qty }) => ({ name, qty }));
+
+const deserializeMaterials = (list) =>
+  list.map(({ name, qty }) => ({ id: crypto.randomUUID(), name, qty }));
+
 export default function AugmentCalculator({ item }) {
   const [startLevel, setStartLevel] = useState(0);
   const [startProgress, setProgress] = useState(0);
@@ -16,10 +38,14 @@ export default function AugmentCalculator({ item }) {
   const [counterTime, setCounterTime] = useState(3);
   const [criticalChance, setCriticalChance] = useState(10);
   const [quickStudyLevel, setQuickStudyLevel] = useState(0);
-  const [showTable, toggleTable] = useState(false);
   const [newMatName, setNewMatName] = useState("");
   const [materials, setMaterials] = useState([]);
+  const [presets, setPresets] = useState([]);
+  const [selectedPresetId, setSelectedPresetId] = useState('default');
+  const [newPresetName, setNewPresetName] = useState('');
+  const { isOpen: showLevelTable, onToggle: toggleLevelTable } = useDisclosure({ defaultIsOpen: false });
 
+  const itemKeyRef = useRef(null);
 
   const defaultMaterials = useMemo(() => {
     const craftData = item?.craft || {};
@@ -43,10 +69,8 @@ export default function AugmentCalculator({ item }) {
     }, {});
   }, [item]);
 
-  const itemKeyRef = useRef(null);
-
   useEffect(() => {
-    const key = item?.id ?? item?.name ?? "unknown-item";
+    const key = item?.id ?? item?.name ?? 'unknown-item';
     const entries = Object.entries(defaultMaterials);
     if (entries.length === 0) return;
 
@@ -57,13 +81,23 @@ export default function AugmentCalculator({ item }) {
       }
 
       itemKeyRef.current = key;
-
-      return entries.map(([name, qty]) => ({
+      const mapped = entries.map(([name, qty]) => ({
         id: crypto.randomUUID(),
         name,
         qty,
       }));
+      return mapped;
     });
+
+    const defaultPreset = {
+      id: 'default',
+      name: 'Default recipe',
+      materials: entries.map(([name, qty]) => ({ name, qty })),
+    };
+
+    setPresets([defaultPreset]);
+    setSelectedPresetId('default');
+    setNewPresetName('');
   }, [defaultMaterials, item]);
 
   const selectedLevels = useMemo(() => {
@@ -177,95 +211,163 @@ export default function AugmentCalculator({ item }) {
 
   const addMaterial = () => {
     const name = newMatName.trim();
-    if (!name || materials.some((m) => m.name === name)) return;
+    if (!name || materials.some((m) => m.name.toLowerCase() === name.toLowerCase())) return;
     setMaterials((prev) => [
       ...prev,
       { id: crypto.randomUUID(), name, qty: 0 },
     ]);
-    setNewMatName("");
+    setNewMatName('');
+  };
+
+  const handlePresetSelect = (event) => {
+    const presetId = event.target.value;
+    setSelectedPresetId(presetId);
+    const preset = presets.find((p) => p.id === presetId);
+    if (!preset) return;
+    setMaterials(deserializeMaterials(preset.materials));
+  };
+
+  const handleSavePreset = () => {
+    const trimmed = newPresetName.trim();
+    if (!trimmed) return;
+
+    const newPreset = {
+      id: crypto.randomUUID(),
+      name: trimmed,
+      materials: serializeMaterials(materials),
+    };
+
+    setPresets((prev) => [...prev.filter((preset) => preset.name !== trimmed), newPreset]);
+    setSelectedPresetId(newPreset.id);
+    setNewPresetName('');
+  };
+
+  const resetToDefaultPreset = () => {
+    const defaultPreset = presets.find((preset) => preset.id === 'default');
+    if (!defaultPreset) return;
+    setSelectedPresetId('default');
+    setMaterials(deserializeMaterials(defaultPreset.materials));
   };
 
   return (
-    <Box
-      w="100%"
-      bg="gray.800"
-      border="1px solid"
-      borderColor="gray.700"
-      borderRadius="md"
-      p={6}
-    >
-      <Box mb={4} display="flex" gap={4} flexWrap="wrap">
-        <LevelSelector
-          label="Start level"
-          value={startLevel}
-          onChange={setStartLevel}
-        />
-        <CounterInput
-          label="Start counters done"
-          value={safeStartProgress}
-          max={selectedLevels[0]?.counter || 0}
-          onChange={setProgress}
-        />
-        <LevelSelector
-          label="Target level"
-          value={targetLevel}
-          onChange={setTargetLevel}
-        />
-        <CounterInput
-          label="Time per counter (s)"
-          value={counterTime}
-          onChange={setCounterTime}
-        />
-        <CounterInput
-          label="Critical augment chance (%)"
-          value={criticalChance}
-          max={100}
-          onChange={setCriticalChance}
-        />
-        <CounterInput
-          label="Quick Study level (0-20)"
-          value={quickStudyLevel}
-          max={20}
-          onChange={setQuickStudyLevel}
-        />
-      </Box>
+    <Stack spacing={6}>
+      <Tabs variant="enclosed" colorScheme="brand" isLazy>
+        <TabList>
+          <Tab>Configuration</Tab>
+          <Tab>Materials</Tab>
+          <Tab>Summary</Tab>
+        </TabList>
 
-      <MaterialConfig
-        materials={materials}
-        onChange={updateMaterialQty}
-        onRename={renameMaterial}
-        onRemove={removeMaterial}
-        newMaterialName={newMatName}
-        setNewMaterialName={setNewMatName}
-        onAdd={addMaterial}
-      />
+        <TabPanels>
+          <TabPanel px={0}>
+            <Stack spacing={4}>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <LevelSelector label="Start level" value={startLevel} onChange={setStartLevel} />
+                <LevelSelector label="Target level" value={targetLevel} onChange={setTargetLevel} />
+                <CounterInput
+                  label="Start counters done"
+                  value={safeStartProgress}
+                  max={augmentRequirements[startLevel]?.counter || 0}
+                  onChange={setProgress}
+                  helperText={`Max ${(augmentRequirements[startLevel]?.counter ?? 0)} counters at +${startLevel}`}
+                />
+                <CounterInput
+                  label="Time per counter (s)"
+                  value={counterTime}
+                  min={0.1}
+                  onChange={setCounterTime}
+                  helperText="Average time to complete one counter"
+                />
+                <CounterInput
+                  label="Critical augment chance (%)"
+                  value={criticalChance}
+                  min={0}
+                  max={100}
+                  onChange={setCriticalChance}
+                  tooltip="Chance a counter completes without consuming materials."
+                  helperText="0 - 100%"
+                />
+                <CounterInput
+                  label="Quick Study level"
+                  value={quickStudyLevel}
+                  min={0}
+                  max={20}
+                  onChange={setQuickStudyLevel}
+                  tooltip="Each Quick Study level adds a 4% chance to skip a counter (up to 80%)."
+                  helperText="0 - 20"
+                />
+              </SimpleGrid>
+            </Stack>
+          </TabPanel>
 
-      <Button
-        size="sm"
-        bg="gray.700"
-        _hover={{ bg: "gray.600" }}
-        onClick={() => toggleTable((v) => !v)}
-        mb={2}
-      >
-        {showTable ? "Hide Level Table" : "Show Level Table"}
-      </Button>
+          <TabPanel px={0}>
+            <Stack spacing={4}>
+              <Stack
+                direction={{ base: 'column', md: 'row' }}
+                spacing={3}
+                align={{ base: 'stretch', md: 'center' }}
+              >
+                <Select
+                  value={selectedPresetId}
+                  onChange={handlePresetSelect}
+                  maxW={{ base: '100%', md: '220px' }}
+                  aria-label="Select material preset"
+                >
+                  {presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  placeholder="Preset name"
+                  value={newPresetName}
+                  onChange={(event) => setNewPresetName(event.target.value)}
+                  maxW={{ base: '100%', md: '220px' }}
+                />
+                <HStack spacing={2}>
+                  <Button size="sm" onClick={handleSavePreset} isDisabled={!newPresetName.trim()}>
+                    Save preset
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={resetToDefaultPreset}>
+                    Reset
+                  </Button>
+                </HStack>
+              </Stack>
 
-      <Collapse in={showTable} animateOpacity>
-        <Box overflowX="auto" mt={2}>
-          <LevelTable
-            breakdown={levelBreakdown}
-            materialColumns={materialColumns}
-          />
-        </Box>
-      </Collapse>
+              <MaterialConfig
+                materials={materials}
+                onChange={updateMaterialQty}
+                onRename={renameMaterial}
+                onRemove={removeMaterial}
+                newMaterialName={newMatName}
+                setNewMaterialName={setNewMatName}
+                onAdd={addMaterial}
+              />
 
-      <Summary
-        totalMaterials={totalMaterials}
-        maxMaterials={maxMaterials}
-        totalCopies={levelTotals.totalCopies}
-        totalTimeSeconds={totalTimeSeconds}
-      />
-    </Box>
+              <Button size="sm" variant="ghost" onClick={toggleLevelTable} alignSelf="flex-start">
+                {showLevelTable ? 'Hide level breakdown' : 'Show level breakdown'}
+              </Button>
+
+              <Collapse in={showLevelTable} animateOpacity>
+                <Box overflowX="auto" border="1px solid" borderColor="gray.700" borderRadius="md" p={3}>
+                  <LevelTable breakdown={levelBreakdown} materialColumns={materialColumns} />
+                </Box>
+              </Collapse>
+            </Stack>
+          </TabPanel>
+
+          <TabPanel px={0}>
+            <Summary
+              totalMaterials={totalMaterials}
+              maxMaterials={maxMaterials}
+              totalCopies={levelTotals.totalCopies}
+              totalTimeSeconds={totalTimeSeconds}
+            />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </Stack>
   );
 }
 
