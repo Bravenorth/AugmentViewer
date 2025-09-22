@@ -1,4 +1,4 @@
-
+import { augmentRequirements } from "../../data/augmentRequirements";
 import { Box, Select, Text } from "@chakra-ui/react";
 
 const sharedInputStyle = {
@@ -8,6 +8,11 @@ const sharedInputStyle = {
 };
 
 export default function LevelSelector({ label, value, onChange }) {
+  const options = augmentRequirements.map((level, index) => ({
+    value: index,
+    label: `+${level.level ?? index}`,
+  }));
+
   return (
     <Box>
       <Text color="gray.300" mb={1}>{label}</Text>
@@ -18,8 +23,8 @@ export default function LevelSelector({ label, value, onChange }) {
         maxW="100px"
         {...sharedInputStyle}
       >
-        {Array.from({ length: 100 }, (_, i) => (
-          <option key={i} value={i}>+{i}</option>
+        {options.map(({ value: optionValue, label: optionLabel }) => (
+          <option key={optionValue} value={optionValue}>{optionLabel}</option>
         ))}
       </Select>
     </Box>

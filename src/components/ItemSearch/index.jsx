@@ -20,6 +20,7 @@ import {
 import { SearchIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import rawItems from "../../data/combined_items.json";
+import isAugmentable from "../../utils/isAugmentable";
 
 const ITEMS_PER_LOAD = 30;
 
@@ -31,7 +32,7 @@ export default function ItemSearch({ onSelectItem }) {
   const { isOpen, onToggle } = useDisclosure();
 
   const items = useMemo(
-    () => Object.values(rawItems).filter((item) => item.name),
+    () => Object.values(rawItems).filter((item) => item.name && isAugmentable(item)),
     []
   );
 
@@ -175,41 +176,46 @@ export default function ItemSearch({ onSelectItem }) {
       </Collapse>
 
       <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5} w="100%">
-        {visibleItems.map((item) => (
-          <Box
-            key={`${item.name}-${item.id ?? item.key ?? Math.random()}`}
-            onClick={() => onSelectItem(item)}
-            cursor="pointer"
-            bg="gray.800"
-            border="1px solid"
-            borderColor="gray.700"
-            borderRadius="md"
-            boxShadow="md"
-            p={4}
-            _hover={{ borderColor: "brand.400", bg: "gray.700" }}
-          >
-            <Heading size="sm" color="gray.100" mb={1}>
-              {item.name}
-            </Heading>
-            {item.id && (
-              <Text fontSize="sm" color="gray.400" mb={2}>
-                ID: {item.id}
-              </Text>
-            )}
-            {item.rarity && (
-              <Tag
-                size="sm"
-                colorScheme={rarityColors[item.rarity] || "gray"}
-                variant="subtle"
-              >
-                <TagLabel>{item.rarity}</TagLabel>
-              </Tag>
-            )}
-          </Box>
-        ))}
+        {visibleItems.map((item, idx) => {
+          const cardKey = item.id ?? item.key ?? `${item.name ?? "item"}-${idx}`;
+
+          return (
+            <Box
+              key={cardKey}
+              onClick={() => onSelectItem(item)}
+              cursor="pointer"
+              bg="gray.800"
+              border="1px solid"
+              borderColor="gray.700"
+              borderRadius="md"
+              boxShadow="md"
+              p={4}
+              _hover={{ borderColor: "brand.400", bg: "gray.700" }}
+            >
+              <Heading size="sm" color="gray.100" mb={1}>
+                {item.name}
+              </Heading>
+              {item.id && (
+                <Text fontSize="sm" color="gray.400" mb={2}>
+                  ID: {item.id}
+                </Text>
+              )}
+              {item.rarity && (
+                <Tag
+                  size="sm"
+                  colorScheme={rarityColors[item.rarity] || "gray"}
+                  variant="subtle"
+                >
+                  <TagLabel>{item.rarity}</TagLabel>
+                </Tag>
+              )}
+            </Box>
+          );
+        })}
       </SimpleGrid>
 
       <div ref={observerRef} style={{ height: "20px" }} />
     </VStack>
   );
 }
+

@@ -1,6 +1,5 @@
-
 import { Box, Text, Input } from "@chakra-ui/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const sharedInputStyle = {
   bg: "gray.700",
@@ -11,14 +10,24 @@ const sharedInputStyle = {
 export default function CounterInput({ label, value, max, onChange }) {
   const [inputValue, setInputValue] = useState(String(value));
 
+  useEffect(() => {
+    setInputValue(String(value));
+  }, [value]);
+
+  const clampValue = (val) => {
+    let result = Number.isFinite(val) ? val : 0;
+    if (typeof max === "number" && Number.isFinite(max)) {
+      result = Math.min(result, max);
+    }
+    return Math.max(result, 0);
+  };
+
   const handleBlur = () => {
     const normalized = inputValue.replace(",", ".");
     const parsed = parseFloat(normalized);
-    if (!isNaN(parsed)) {
-      onChange(parsed);
-    } else {
-      onChange(0);
-    }
+    const safeValue = clampValue(parsed);
+    onChange(safeValue);
+    setInputValue(String(safeValue));
   };
 
   return (

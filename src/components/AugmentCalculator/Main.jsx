@@ -1,12 +1,13 @@
-import { Box, Heading, Collapse, Button } from "@chakra-ui/react";
-import { useState, useMemo, useEffect } from "react";
+﻿import { Box, Heading, Collapse, Button } from "@chakra-ui/react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { augmentRequirements } from "../../data/augmentRequirements";
-import useMarketPrices from "../../hooks/useMarketPrices";
 import LevelSelector from "./LevelSelector";
 import CounterInput from "./CounterInput";
 import MaterialConfig from "./MaterialConfig";
 import LevelTable from "./LevelTable";
 import Summary from "./Summary";
+
+const TOTAL_COUNTERS_ALL_LEVELS = augmentRequirements.reduce((sum, lvl) => sum + lvl.counter, 0);
 
 export default function AugmentCalculator({ item }) {
   const [startLevel, setStartLevel] = useState(0);
@@ -19,93 +20,145 @@ export default function AugmentCalculator({ item }) {
   const [newMatName, setNewMatName] = useState("");
   const [materials, setMaterials] = useState([]);
 
-  const prices = useMarketPrices();
-
-  const selectedLevels = useMemo(
-    () => augmentRequirements.slice(startLevel, targetLevel),
-    [startLevel, targetLevel]
-  );
 
   const defaultMaterials = useMemo(() => {
-    const base = item.augmenting || {};
-    const perCounter = {};
-    const totalCounters = augmentRequirements
-      .slice(startLevel, targetLevel)
-      .reduce((sum, lvl, idx) => {
-        const counters =
-          idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
-        return sum + counters;
-      }, 0);
+    const craftData = item?.craft || {};
+    const hasScrapping = craftData.scrapping && Object.keys(craftData.scrapping).length > 0;
+    const source = hasScrapping ? craftData.scrapping : craftData.augmenting || {};
+    const isPerCounter = hasScrapping;
 
-    if (Object.keys(base).length > 0 && totalCounters > 0) {
-      for (const [mat, totalQty] of Object.entries(base)) {
-        perCounter[mat] = totalQty / totalCounters;
-      }
-      return perCounter;
+    if (Object.keys(source).length === 0) {
+      return { "Example Material": 0 };
     }
 
-    return { "Example Material": 0 };
-  }, [item, startLevel, targetLevel, startProgress]);
+    return Object.entries(source).reduce((acc, [name, totalQty]) => {
+      const numericTotal = Number(totalQty);
+      if (!Number.isFinite(numericTotal)) {
+        acc[name] = 0;
+        return acc;
+      }
+
+      acc[name] = isPerCounter ? Math.max(numericTotal, 0) : numericTotal / TOTAL_COUNTERS_ALL_LEVELS;
+      return acc;
+    }, {});
+  }, [item]);
+
+  const itemKeyRef = useRef(null);
 
   useEffect(() => {
+    const key = item?.id ?? item?.name ?? "unknown-item";
+    const entries = Object.entries(defaultMaterials);
+    if (entries.length === 0) return;
+
     setMaterials((prev) => {
-      if (prev.length > 0) return prev;
-      const entries = Object.entries(defaultMaterials);
+      const isSameItem = itemKeyRef.current === key;
+      if (isSameItem && prev.length > 0) {
+        return prev;
+      }
+
+      itemKeyRef.current = key;
+
       return entries.map(([name, qty]) => ({
         id: crypto.randomUUID(),
         name,
         qty,
       }));
     });
-  }, [defaultMaterials]);
+  }, [defaultMaterials, item]);
 
-  const quickStudyEfficiency = Math.min(quickStudyLevel * 0.04, 0.8);
+  const selectedLevels = useMemo(() => {
+    if (targetLevel <= startLevel) {
+      return [];
+    }
+    return augmentRequirements.slice(startLevel, targetLevel);
+  }, [startLevel, targetLevel]);
 
-  const { maxMaterials, totalMaterials, totalCopies, totalCounters } = useMemo(
-    () => {
-      const baseTotals = selectedLevels.reduce(
-        (acc, lvl, idx) => {
-          const countersNeeded =
-            idx === 0 ? Math.max(lvl.counter - startProgress, 0) : lvl.counter;
-          acc.totalCounters += countersNeeded;
-          acc.totalCopies += lvl.copies || 0;
+  const materialColumns = useMemo(() => {
+    const seen = new Set();
+    return materials
+      .map((mat) => mat.name?.trim())
+      .filter((name) => {
+        if (!name || seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+  }, [materials]);
 
-          materials.forEach(({ name, qty }) => {
-            const amount = countersNeeded * qty;
-            acc.maxMaterials[name] = (acc.maxMaterials[name] || 0) + amount;
-          });
+  const safeStartProgress = Math.max(Number(startProgress) || 0, 0);
+  const safeCounterTime = Math.max(Number(counterTime) || 0, 0);
+  const safeCriticalChance = Math.max(0, Math.min(Number(criticalChance) || 0, 100));
+  const safeQuickStudyLevel = Math.max(0, Math.min(Number(quickStudyLevel) || 0, 20));
+  const quickStudyEfficiency = Math.min(safeQuickStudyLevel * 0.04, 0.8);
+  const critRate = safeCriticalChance / 100;
+  const materialMultiplier = Math.min(Math.max(1 - critRate, 0), 1);
+  const countersPerTimedAction = 1 + quickStudyEfficiency;
 
-          return acc;
-        },
-        { maxMaterials: {}, totalMaterials: {}, totalCopies: 0, totalCounters: 0 }
-      );
+  const levelData = useMemo(() => {
+    const breakdown = [];
+    const materialSet = new Set(materialColumns);
+    const totals = {
+      totalCounters: 0,
+      totalCopies: 0,
+      maxMaterials: materialColumns.reduce((acc, name) => {
+        acc[name] = 0;
+        return acc;
+      }, {}),
+    };
 
-      const effectiveRatio =
-        (1 - criticalChance / 100) * (1 - quickStudyEfficiency);
+    selectedLevels.forEach((lvl, idx) => {
+      const countersNeeded = idx === 0 ? Math.max(lvl.counter - safeStartProgress, 0) : lvl.counter;
+      const copiesRequired = idx === 0 && safeStartProgress > 0 ? 0 : lvl.copies || 0;
 
-      Object.entries(baseTotals.maxMaterials).forEach(([name, qty]) => {
-        baseTotals.totalMaterials[name] = qty * effectiveRatio;
+      totals.totalCounters += countersNeeded;
+      totals.totalCopies += copiesRequired;
+
+      const materialsForLevel = {};
+
+      materials.forEach(({ name, qty }) => {
+        const trimmedName = name?.trim();
+        if (!trimmedName || !materialSet.has(trimmedName)) return;
+
+        const perCounter = Number(qty);
+        if (!Number.isFinite(perCounter) || perCounter < 0) return;
+
+        const amount = countersNeeded * perCounter;
+        totals.maxMaterials[trimmedName] += amount;
+
+        if (amount) {
+          materialsForLevel[trimmedName] = amount;
+        }
       });
 
-      return baseTotals;
-    }, [
-      selectedLevels,
-      startProgress,
-      materials,
-      criticalChance,
-      quickStudyLevel,
-    ]
+      breakdown.push({
+        level: startLevel + idx + 1,
+        countersRequired: countersNeeded,
+        copiesRequired,
+        materials: materialsForLevel,
+      });
+    });
+
+    return { breakdown, totals };
+  }, [materialColumns, materials, safeStartProgress, selectedLevels, startLevel]);
+
+  const { breakdown: levelBreakdown, totals: levelTotals } = levelData;
+
+  const maxMaterials = levelTotals.maxMaterials;
+  const totalMaterials = Object.fromEntries(
+    Object.entries(maxMaterials).map(([name, amount]) => [name, amount * materialMultiplier])
   );
 
-  const effectiveCounters =
-    totalCounters * (1 - criticalChance / 100) * (1 - quickStudyEfficiency);
-  const totalTimeSeconds = Math.round(effectiveCounters * counterTime);
+  const timedCounters = levelTotals.totalCounters * materialMultiplier;
+  const effectiveActions = countersPerTimedAction > 0 ? timedCounters / countersPerTimedAction : timedCounters;
+  const totalTimeSeconds = Math.round(effectiveActions * safeCounterTime);
 
   const updateMaterialQty = (id, value) => {
     setMaterials((prev) =>
-      prev.map((mat) =>
-        mat.id === id ? { ...mat, qty: isNaN(value) ? 0 : value } : mat
-      )
+      prev.map((mat) => {
+        if (mat.id !== id) return mat;
+        const numeric = Number(value);
+        const safeQty = Number.isFinite(numeric) ? Math.max(numeric, 0) : 0;
+        return { ...mat, qty: safeQty };
+      })
     );
   };
 
@@ -149,8 +202,8 @@ export default function AugmentCalculator({ item }) {
         />
         <CounterInput
           label="Start counters done"
-          value={startProgress}
-          max={augmentRequirements[startLevel]?.counter || 0}
+          value={safeStartProgress}
+          max={selectedLevels[0]?.counter || 0}
           onChange={setProgress}
         />
         <LevelSelector
@@ -166,6 +219,7 @@ export default function AugmentCalculator({ item }) {
         <CounterInput
           label="Critical augment chance (%)"
           value={criticalChance}
+          max={100}
           onChange={setCriticalChance}
         />
         <CounterInput
@@ -199,10 +253,8 @@ export default function AugmentCalculator({ item }) {
       <Collapse in={showTable} animateOpacity>
         <Box overflowX="auto" mt={2}>
           <LevelTable
-            levels={selectedLevels}
-            startLevel={startLevel}
-            materials={materials}
-            startProgress={startProgress}
+            breakdown={levelBreakdown}
+            materialColumns={materialColumns}
           />
         </Box>
       </Collapse>
@@ -210,10 +262,10 @@ export default function AugmentCalculator({ item }) {
       <Summary
         totalMaterials={totalMaterials}
         maxMaterials={maxMaterials}
-        totalCopies={totalCopies}
+        totalCopies={levelTotals.totalCopies}
         totalTimeSeconds={totalTimeSeconds}
-        prices={prices}
       />
     </Box>
   );
 }
+

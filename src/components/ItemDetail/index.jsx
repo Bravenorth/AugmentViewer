@@ -11,6 +11,7 @@ import {
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import AugmentCalculator from "../AugmentCalculator/Main";
 import ItemStatTooltip from "../common/ItemStatTooltip";
+import isItemAugmentable from "../../utils/isAugmentable";
 
 const rarityColors = {
   common: "gray",
@@ -23,9 +24,7 @@ const rarityColors = {
 
 export default function ItemDetail({ item, onBack }) {
   const stats = item.equipmentStats || {};
-  const isAugmentable =
-    item.craft?.augmenting &&
-    Object.keys(item.craft.augmenting).length > 0;
+  const isAugmentable = isItemAugmentable(item);
 
   return (
     <Box w="100%" maxW="1800px" mx="auto" px={6} mt={6}>
@@ -140,7 +139,7 @@ export default function ItemDetail({ item, onBack }) {
               <Box my={4} h="1px" bg="gray.600" />
 
               <Text fontSize="sm" color="red.500" mb={2}>
-                WORK IN PROGRESS – Base material and recipe data may be incomplete or approximative.
+                WORK IN PROGRESS - Base material and recipe data may be incomplete or approximative.
               </Text>
 
               <AugmentCalculator item={item} />
