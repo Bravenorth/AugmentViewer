@@ -1,7 +1,7 @@
 # Node modules
 node_modules/
 
-# Build output (si tu utilises `vite build`)
+# Build output
 dist/
 
 # Vite cache
@@ -20,11 +20,11 @@ Thumbs.db
 .env
 .env.*.local
 
-# Dossiers à ignorer
+# Generated files
 src/scripts/
 output/
 
-# Editor files (VSCode, etc.)
+# Editor files
 .vscode/
 .idea/
 *.swp
