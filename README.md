@@ -16,6 +16,5 @@ All Idlescape content belongs to its respective creators.
 ## 💬 Contact
 
 Want to contribute or report an issue?
-
 - Discord: [Bravenorth#0001](https://discordapp.com/users/134398029317799936)
 - GitHub Issues: [Create Issue](https://github.com/yourusername/idlescape-augment-viewer/issues)

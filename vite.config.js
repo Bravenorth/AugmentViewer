@@ -7,7 +7,7 @@ const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig({
   plugins: [react()],
-  base: '/Augment/',
+  base: '/AugmentViewer/',
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
