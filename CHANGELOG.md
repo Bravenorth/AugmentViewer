@@ -2,6 +2,22 @@
 
 ---
 
+## [0.2.2] - 2025-09-22
+
+### Item Explorer
+- Let users favourite items from the search grid and keep them pinned to the top of results with matching star state in the detail view.
+- Persist favourites to localStorage so starred items stay highlighted between sessions.
+
+### Augment Planner
+- Removed manual preset management; configurations now auto-save per item and hydrate instantly when you revisit it.
+- Migrated existing preset data in localStorage to the new store and normalised values to keep legacy users intact.
+- Added a simple "Reset to defaults" action and automatically clamp progress when the start level changes.
+
+### Utilities
+- Introduced a shared `getItemKey` helper to generate stable keys for storage and favourite tracking.
+
+---
+
 ## [0.2.1] - 2025-09-22
 
 ### UI Foundation & Theme
