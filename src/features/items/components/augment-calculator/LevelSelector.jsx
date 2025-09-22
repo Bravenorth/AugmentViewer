@@ -1,4 +1,4 @@
-import { augmentRequirements } from "../../../../data/augmentRequirements";
+﻿import { augmentRequirements } from "../../../../data/augmentRequirements";
 import { Box, Select, Text } from "@chakra-ui/react";
 
 const sharedInputStyle = {
@@ -8,9 +8,9 @@ const sharedInputStyle = {
 };
 
 export default function LevelSelector({ label, value, onChange }) {
-  const options = augmentRequirements.map((level, index) => ({
+  const options = augmentRequirements.map((_, index) => ({
     value: index,
-    label: `+${level.level ?? index}`,
+    label: `+${index}`,
   }));
 
   return (
