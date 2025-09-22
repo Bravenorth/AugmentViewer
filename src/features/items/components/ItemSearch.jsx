@@ -18,8 +18,8 @@ import {
 } from "@chakra-ui/react";
 import { SearchIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import rawItems from "../../data/combined_items.json";
-import isAugmentable from "../../utils/isAugmentable";
+import rawItems from "../../../data/combined_items.json";
+import isAugmentable from "../utils/isAugmentable";
 
 const ITEMS_PER_LOAD = 30;
 

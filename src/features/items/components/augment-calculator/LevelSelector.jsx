@@ -1,4 +1,4 @@
-import { augmentRequirements } from "../../data/augmentRequirements";
+import { augmentRequirements } from "../../../../data/augmentRequirements";
 import { Box, Select, Text } from "@chakra-ui/react";
 
 const sharedInputStyle = {

@@ -1,6 +1,6 @@
-﻿import { Box, Heading, Collapse, Button } from "@chakra-ui/react";
+import { Box, Heading, Collapse, Button } from "@chakra-ui/react";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { augmentRequirements } from "../../data/augmentRequirements";
+import { augmentRequirements } from "../../../../data/augmentRequirements";
 import LevelSelector from "./LevelSelector";
 import CounterInput from "./CounterInput";
 import MaterialConfig from "./MaterialConfig";
