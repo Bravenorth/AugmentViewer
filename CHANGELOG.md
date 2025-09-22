@@ -2,7 +2,7 @@
 
 ---
 
-## [0.2.0] - 2025-09-22
+## [0.2.1] - 2025-09-22
 
 ### UI Foundation & Theme
 - Centralised Chakra styling in `src/theme.js` (consistent spacing, focus rings, tooltips, field styling) so buttons, inputs, and selects share one visual language.
