@@ -109,9 +109,8 @@ function prepareTableRows(stats, transformFn, opts) {
 }
 
 
-function StatSection({ title, stats, suffix, transform, forceSign = true }) {
-  const rows = prepareTableRows(stats, transform, { forceSign });
-  if (rows.length === 0) return null;
+function StatSection({ title, rows, suffix }) {
+  if (!rows || rows.length === 0) return null;
 
   return (
     <Box sx={STYLES.statBlock}>
@@ -137,10 +136,8 @@ function StatSection({ title, stats, suffix, transform, forceSign = true }) {
 
 StatSection.propTypes = {
   title: PropTypes.string.isRequired,
-  stats: PropTypes.object,
+  rows: PropTypes.arrayOf(PropTypes.array).isRequired,
   suffix: PropTypes.string,
-  transform: PropTypes.func,
-  forceSign: PropTypes.bool,
 };
 
 
@@ -206,17 +203,30 @@ export default function ItemStatTooltip({ item }) {
     { title: "Augmentation Bonus", stats: augmentationBonuses },
   ];
 
+  const preparedSections = STAT_SECTIONS
+    .map((section) => ({
+      ...section,
+      rows: prepareTableRows(section.stats, section.transform, { forceSign: section.forceSign ?? true }),
+    }))
+    .filter((section) => section.rows.length > 0);
+
+  if (preparedSections.length === 0) {
+    return (
+      <Box sx={STYLES.wrapper}>
+        <Text fontSize="sm" color="gray.500">No detailed stats available for this item.</Text>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={STYLES.wrapper}>
       <Flex wrap="wrap" gap={3}>
-        {STAT_SECTIONS.map((section) => (
+        {preparedSections.map((section) => (
           <StatSection
             key={section.title}
             title={section.title}
-            stats={section.stats}
+            rows={section.rows}
             suffix={section.suffix}
-            transform={section.transform}
-            forceSign={section.forceSign ?? true}
           />
         ))}
       </Flex>

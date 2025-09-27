@@ -32,6 +32,12 @@ const DEFAULT_CONFIG = Object.freeze({
   quickStudyLevel: 0,
 });
 
+const GLOBAL_PREFERENCES_KEY = "__globals";
+const DEFAULT_GLOBAL_PREFERENCES = Object.freeze({
+  criticalChance: DEFAULT_CONFIG.criticalChance,
+  quickStudyLevel: DEFAULT_CONFIG.quickStudyLevel,
+});
+
 const clamp = (value, min, max) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -77,6 +83,32 @@ const mapMaterials = (entries) =>
     name,
     qty,
   }));
+
+const formatMaterialName = (rawName = "") => {
+  if (typeof rawName !== "string") {
+    return "";
+  }
+  const normalized = rawName
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) {
+    return "";
+  }
+  return normalized
+    .toLowerCase()
+    .split(" ")
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : ""))
+    .join(" ");
+};
+
+const sanitizeGlobalPreferences = (prefs = {}) => {
+  const merged = { ...DEFAULT_GLOBAL_PREFERENCES, ...prefs };
+  return {
+    criticalChance: clamp(merged.criticalChance, 0, 100),
+    quickStudyLevel: clamp(merged.quickStudyLevel, 0, 20),
+  };
+};
 
 const resolveLegacyConfig = (entry) => {
   if (!entry || typeof entry !== "object") return null;
@@ -172,13 +204,23 @@ export default function AugmentCalculator({ item }) {
     }
 
     return Object.entries(source).reduce((acc, [name, totalQty]) => {
-      const numericTotal = Number(totalQty);
-      if (!Number.isFinite(numericTotal)) {
-        acc[name] = 0;
+      const displayName = formatMaterialName(name);
+      if (!displayName) {
         return acc;
       }
 
-      acc[name] = treatAugmentingAsPerCounter ? Math.max(numericTotal, 0) : numericTotal / normalizedTotalCounters;
+      const numericTotal = Number(totalQty);
+      if (!Number.isFinite(numericTotal)) {
+        acc[displayName] = typeof acc[displayName] === "number" ? acc[displayName] : 0;
+        return acc;
+      }
+
+      const baseAmount = treatAugmentingAsPerCounter
+        ? Math.max(numericTotal, 0)
+        : numericTotal / normalizedTotalCounters;
+      const previousAmount = typeof acc[displayName] === "number" ? acc[displayName] : 0;
+
+      acc[displayName] = previousAmount + baseAmount;
       return acc;
     }, {});
   }, [hasAugmentOverride, item, normalizedTotalCounters]);
@@ -214,14 +256,20 @@ export default function AugmentCalculator({ item }) {
     configHydratedRef.current = false;
     const key = getItemKey(item) ?? "unknown-item";
     const store = readConfigStore();
+    const globalPrefs = sanitizeGlobalPreferences(store[GLOBAL_PREFERENCES_KEY]);
     const rawEntry = store[key];
     const resolved = resolveLegacyConfig(rawEntry);
-    const sanitizedConfig = resolved ? sanitizeConfig(resolved) : defaultSanitizedConfig;
+    const mergedConfig = {
+      ...DEFAULT_CONFIG,
+      ...globalPrefs,
+      ...(resolved ?? {}),
+    };
+    const sanitizedConfig = sanitizeConfig(mergedConfig);
 
     applyConfig(sanitizedConfig);
     lastSavedConfigRef.current = sanitizedConfig;
     configHydratedRef.current = true;
-  }, [defaultSanitizedConfig, item, sanitizeConfig]);
+  }, [item, sanitizeConfig]);
 
   useEffect(() => {
     if (!configHydratedRef.current || !item) return;
@@ -242,17 +290,20 @@ export default function AugmentCalculator({ item }) {
     }
 
     const store = readConfigStore();
+    store[GLOBAL_PREFERENCES_KEY] = sanitizeGlobalPreferences({
+      criticalChance: sanitized.criticalChance,
+      quickStudyLevel: sanitized.quickStudyLevel,
+    });
 
     if (areConfigsEqual(sanitized, DEFAULT_CONFIG)) {
       if (Object.prototype.hasOwnProperty.call(store, key)) {
         delete store[key];
-        writeConfigStore(store);
       }
     } else {
       store[key] = sanitized;
-      writeConfigStore(store);
     }
 
+    writeConfigStore(store);
     lastSavedConfigRef.current = sanitized;
   }, [areConfigsEqual, counterTime, criticalChance, item, quickStudyLevel, sanitizeConfig, startLevel, startProgress, targetLevel]);
 
@@ -467,7 +518,7 @@ export default function AugmentCalculator({ item }) {
                     min={0}
                     max={100}
                     onChange={setCriticalChance}
-                    tooltip="Chance a counter completes without consuming materials."
+                    tooltip="Chance for an addtionnel augment counter."
                     helperText="0 - 100%"
                   />
                 )}
@@ -478,7 +529,7 @@ export default function AugmentCalculator({ item }) {
                     min={0}
                     max={20}
                     onChange={setQuickStudyLevel}
-                    tooltip="Each Quick Study level adds a 4% chance to skip a counter (up to 80%)."
+                    tooltip="Each level grants a 4% chance per enchanting actions to complete another enchanting action (caps at 80% and 5 chained procs)."
                     helperText="0 - 20"
                   />
                 )}
