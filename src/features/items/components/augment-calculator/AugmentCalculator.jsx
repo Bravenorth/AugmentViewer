@@ -21,8 +21,6 @@ import LevelTable from "./LevelTable";
 import Summary from "./Summary";
 import getItemKey from "../../utils/getItemKey";
 
-const TOTAL_COUNTERS_ALL_LEVELS = augmentRequirements.reduce((sum, lvl) => sum + lvl.counter, 0);
-const MAX_LEVEL_INDEX = augmentRequirements.length - 1;
 const CONFIG_STORAGE_KEY = "augment-configuration-store-v1";
 
 const DEFAULT_CONFIG = Object.freeze({
@@ -44,49 +42,33 @@ const clamp = (value, min, max) => {
   return Math.min(Math.max(numeric, lowerBound), upperBound);
 };
 
-const sanitizeConfig = (config = {}) => {
-  const merged = { ...DEFAULT_CONFIG, ...config };
-  const startLevel = clamp(Math.round(merged.startLevel), 0, MAX_LEVEL_INDEX);
-  const targetLevel = clamp(Math.round(merged.targetLevel), 0, MAX_LEVEL_INDEX);
-  const normalizedTarget = Math.max(targetLevel, startLevel);
-  const maxCounters = augmentRequirements[startLevel]?.counter;
+const buildRequirementTable = (item) => {
+  const override = item?.augmentOverride;
+  const hasFixedSuccess = override && typeof override.fixedSuccessCount === "number";
+  const maxAugLevel = Number(item?.maxAugLevel);
+  const cappedLevels = Number.isFinite(maxAugLevel)
+    ? Math.max(Math.min(maxAugLevel, augmentRequirements.length), 0)
+    : augmentRequirements.length;
+  const levelCount = cappedLevels > 0 ? cappedLevels : augmentRequirements.length;
 
-  return {
-    startLevel,
-    startProgress: clamp(merged.startProgress, 0, maxCounters),
-    targetLevel: normalizedTarget,
-    counterTime: clamp(merged.counterTime, 0, undefined),
-    criticalChance: clamp(merged.criticalChance, 0, 100),
-    quickStudyLevel: clamp(merged.quickStudyLevel, 0, 20),
-  };
-};
+  const baseTable = augmentRequirements.slice(0, levelCount).map(({ level, counter, copies }) => ({
+    level,
+    counter,
+    copies,
+  }));
 
-const areConfigsEqual = (left, right) => {
-  const a = sanitizeConfig(left);
-  const b = sanitizeConfig(right);
-  return Object.keys(DEFAULT_CONFIG).every((key) => a[key] === b[key]);
-};
-
-const readConfigStore = () => {
-  if (typeof window === "undefined") return {};
-  try {
-    const stored = window.localStorage.getItem(CONFIG_STORAGE_KEY);
-    if (!stored) return {};
-    const parsed = JSON.parse(stored);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    console.error("Failed to read configuration store", error);
-    return {};
+  if (!hasFixedSuccess) {
+    return baseTable;
   }
-};
 
-const writeConfigStore = (store) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(store));
-  } catch (error) {
-    console.error("Failed to persist configuration store", error);
-  }
+  const successCount = Math.max(Number(override.fixedSuccessCount) || 0, 0);
+  const perLevelCounter = successCount > 0 ? successCount : 1;
+
+  return baseTable.map(({ level }) => ({
+    level,
+    counter: perLevelCounter,
+    copies: 0,
+  }));
 };
 
 const mapMaterials = (entries) =>
@@ -115,27 +97,75 @@ const resolveLegacyConfig = (entry) => {
   return null;
 };
 
-const DEFAULT_SANITIZED_CONFIG = sanitizeConfig(DEFAULT_CONFIG);
-
 export default function AugmentCalculator({ item }) {
-  const [startLevel, setStartLevel] = useState(DEFAULT_CONFIG.startLevel);
-  const [startProgress, setProgress] = useState(DEFAULT_CONFIG.startProgress);
-  const [targetLevel, setTargetLevel] = useState(DEFAULT_CONFIG.targetLevel);
-  const [counterTime, setCounterTime] = useState(DEFAULT_CONFIG.counterTime);
-  const [criticalChance, setCriticalChance] = useState(DEFAULT_CONFIG.criticalChance);
-  const [quickStudyLevel, setQuickStudyLevel] = useState(DEFAULT_CONFIG.quickStudyLevel);
+  const itemClass = (item?.class || "").toLowerCase();
+  const isKeyItem = itemClass === "key";
+  const isScrollItem = itemClass.includes("scroll");
+  const isSimpleItem = isKeyItem || isScrollItem;
+
+  const requirementTable = useMemo(() => buildRequirementTable(item), [item]);
+  const maxLevelIndex = Math.max(requirementTable.length - 1, 0);
+  const targetLevelMaxOption = Math.max(requirementTable.length, 0);
+
+  const totalCountersAllLevels = useMemo(
+    () => requirementTable.reduce((sum, lvl) => sum + Math.max(lvl.counter || 0, 0), 0),
+    [requirementTable]
+  );
+
+  const sanitizeConfig = useMemo(() => {
+    return (config = {}) => {
+      const merged = { ...DEFAULT_CONFIG, ...config };
+      const safeMaxLevelIndex = Math.max(maxLevelIndex, 0);
+      const safeTargetMax = Math.max(targetLevelMaxOption, 0);
+
+      const startLevelValue = clamp(Math.round(merged.startLevel), 0, safeMaxLevelIndex);
+      const targetLevelValue = clamp(Math.round(merged.targetLevel), 0, safeTargetMax);
+      const normalizedTarget = Math.max(targetLevelValue, startLevelValue);
+      const maxCountersForStart = requirementTable[startLevelValue]?.counter ?? 0;
+
+      return {
+        startLevel: startLevelValue,
+        startProgress: isSimpleItem ? 0 : clamp(merged.startProgress, 0, maxCountersForStart),
+        targetLevel: normalizedTarget,
+        counterTime: isSimpleItem ? 0 : clamp(merged.counterTime, 0, undefined),
+        criticalChance: isSimpleItem ? 0 : clamp(merged.criticalChance, 0, 100),
+        quickStudyLevel: isSimpleItem ? 0 : clamp(merged.quickStudyLevel, 0, 20),
+      };
+    };
+  }, [isSimpleItem, maxLevelIndex, requirementTable, targetLevelMaxOption]);
+
+  const areConfigsEqual = useMemo(() => {
+    return (left, right) => {
+      const a = sanitizeConfig(left);
+      const b = sanitizeConfig(right);
+      return Object.keys(DEFAULT_CONFIG).every((key) => a[key] === b[key]);
+    };
+  }, [sanitizeConfig]);
+
+  const defaultSanitizedConfig = useMemo(() => sanitizeConfig(DEFAULT_CONFIG), [sanitizeConfig]);
+
+  const [startLevel, setStartLevel] = useState(defaultSanitizedConfig.startLevel);
+  const [startProgress, setProgress] = useState(defaultSanitizedConfig.startProgress);
+  const [targetLevel, setTargetLevel] = useState(defaultSanitizedConfig.targetLevel);
+  const [counterTime, setCounterTime] = useState(defaultSanitizedConfig.counterTime);
+  const [criticalChance, setCriticalChance] = useState(defaultSanitizedConfig.criticalChance);
+  const [quickStudyLevel, setQuickStudyLevel] = useState(defaultSanitizedConfig.quickStudyLevel);
   const [newMatName, setNewMatName] = useState("");
   const [materials, setMaterials] = useState([]);
   const { isOpen: showLevelTable, onToggle: toggleLevelTable } = useDisclosure({ defaultIsOpen: false });
   const itemKeyRef = useRef(null);
   const configHydratedRef = useRef(false);
-  const lastSavedConfigRef = useRef(DEFAULT_SANITIZED_CONFIG);
+  const lastSavedConfigRef = useRef(defaultSanitizedConfig);
+
+  const hasAugmentOverride = Boolean(item?.augmentOverride && typeof item.augmentOverride.fixedSuccessCount === "number");
+  const normalizedTotalCounters = totalCountersAllLevels > 0 ? totalCountersAllLevels : 1;
 
   const defaultMaterials = useMemo(() => {
     const craftData = item?.craft || {};
     const hasScrapping = craftData.scrapping && Object.keys(craftData.scrapping).length > 0;
+    const hasAugmenting = craftData.augmenting && Object.keys(craftData.augmenting).length > 0;
+    const treatAugmentingAsPerCounter = hasScrapping || (hasAugmenting && hasAugmentOverride);
     const source = hasScrapping ? craftData.scrapping : craftData.augmenting || {};
-    const isPerCounter = hasScrapping;
 
     if (Object.keys(source).length === 0) {
       return { "Example Material": 0 };
@@ -148,14 +178,14 @@ export default function AugmentCalculator({ item }) {
         return acc;
       }
 
-      acc[name] = isPerCounter ? Math.max(numericTotal, 0) : numericTotal / TOTAL_COUNTERS_ALL_LEVELS;
+      acc[name] = treatAugmentingAsPerCounter ? Math.max(numericTotal, 0) : numericTotal / normalizedTotalCounters;
       return acc;
     }, {});
-  }, [item]);
+  }, [hasAugmentOverride, item, normalizedTotalCounters]);
 
   const applyConfig = (config) => {
     const sanitized = sanitizeConfig(config);
-    const maxCounters = augmentRequirements[sanitized.startLevel]?.counter ?? sanitized.startProgress;
+    const maxCounters = requirementTable[sanitized.startLevel]?.counter ?? sanitized.startProgress;
     setStartLevel(sanitized.startLevel);
     setTargetLevel(sanitized.targetLevel);
     setProgress(clamp(sanitized.startProgress, 0, maxCounters));
@@ -186,12 +216,12 @@ export default function AugmentCalculator({ item }) {
     const store = readConfigStore();
     const rawEntry = store[key];
     const resolved = resolveLegacyConfig(rawEntry);
-    const sanitizedConfig = resolved ? sanitizeConfig(resolved) : DEFAULT_SANITIZED_CONFIG;
+    const sanitizedConfig = resolved ? sanitizeConfig(resolved) : defaultSanitizedConfig;
 
     applyConfig(sanitizedConfig);
     lastSavedConfigRef.current = sanitizedConfig;
     configHydratedRef.current = true;
-  }, [item]);
+  }, [defaultSanitizedConfig, item, sanitizeConfig]);
 
   useEffect(() => {
     if (!configHydratedRef.current || !item) return;
@@ -224,21 +254,21 @@ export default function AugmentCalculator({ item }) {
     }
 
     lastSavedConfigRef.current = sanitized;
-  }, [startLevel, startProgress, targetLevel, counterTime, criticalChance, quickStudyLevel, item]);
+  }, [areConfigsEqual, counterTime, criticalChance, item, quickStudyLevel, sanitizeConfig, startLevel, startProgress, targetLevel]);
 
   useEffect(() => {
     setProgress((prev) => {
-      const maxCounters = augmentRequirements[startLevel]?.counter;
+      const maxCounters = requirementTable[startLevel]?.counter ?? 0;
       return clamp(prev, 0, maxCounters);
     });
-  }, [startLevel]);
+  }, [requirementTable, startLevel]);
 
   const selectedLevels = useMemo(() => {
     if (targetLevel <= startLevel) {
       return [];
     }
-    return augmentRequirements.slice(startLevel, targetLevel);
-  }, [startLevel, targetLevel]);
+    return requirementTable.slice(startLevel, targetLevel);
+  }, [requirementTable, startLevel, targetLevel]);
 
   const materialColumns = useMemo(() => {
     const seen = new Set();
@@ -251,14 +281,14 @@ export default function AugmentCalculator({ item }) {
       });
   }, [materials]);
 
-  const safeStartProgress = Math.max(Number(startProgress) || 0, 0);
-  const safeCounterTime = Math.max(Number(counterTime) || 0, 0);
-  const safeCriticalChance = Math.max(0, Math.min(Number(criticalChance) || 0, 100));
-  const safeQuickStudyLevel = Math.max(0, Math.min(Number(quickStudyLevel) || 0, 20));
+  const safeStartProgress = isSimpleItem ? 0 : Math.max(Number(startProgress) || 0, 0);
+  const safeCounterTime = isSimpleItem ? 0 : Math.max(Number(counterTime) || 0, 0);
+  const safeCriticalChance = isSimpleItem ? 0 : Math.max(0, Math.min(Number(criticalChance) || 0, 100));
+  const safeQuickStudyLevel = isSimpleItem ? 0 : Math.max(0, Math.min(Number(quickStudyLevel) || 0, 20));
   const quickStudyEfficiency = Math.min(safeQuickStudyLevel * 0.04, 0.8);
   const critRate = safeCriticalChance / 100;
   const materialMultiplier = Math.min(Math.max(1 - critRate, 0), 1);
-  const countersPerTimedAction = 1 + quickStudyEfficiency;
+  const countersPerTimedAction = isSimpleItem ? 1 : 1 + quickStudyEfficiency;
 
   const currentConfig = useMemo(
     () => ({
@@ -269,13 +299,10 @@ export default function AugmentCalculator({ item }) {
       criticalChance: safeCriticalChance,
       quickStudyLevel: safeQuickStudyLevel,
     }),
-    [startLevel, safeStartProgress, targetLevel, safeCounterTime, safeCriticalChance, safeQuickStudyLevel]
+    [safeCounterTime, safeCriticalChance, safeQuickStudyLevel, safeStartProgress, startLevel, targetLevel]
   );
 
-  const isDefaultConfig = useMemo(
-    () => areConfigsEqual(currentConfig, DEFAULT_CONFIG),
-    [currentConfig]
-  );
+  const isDefaultConfig = useMemo(() => areConfigsEqual(currentConfig, DEFAULT_CONFIG), [areConfigsEqual, currentConfig]);
 
   const levelData = useMemo(() => {
     const breakdown = [];
@@ -290,7 +317,7 @@ export default function AugmentCalculator({ item }) {
     };
 
     selectedLevels.forEach((lvl, idx) => {
-      const countersNeeded = idx === 0 ? Math.max(lvl.counter - safeStartProgress, 0) : lvl.counter;
+      const countersNeeded = idx === 0 ? Math.max((lvl.counter || 0) - safeStartProgress, 0) : (lvl.counter || 0);
       const copiesRequired = idx === 0 && safeStartProgress > 0 ? 0 : lvl.copies || 0;
 
       totals.totalCounters += countersNeeded;
@@ -314,7 +341,7 @@ export default function AugmentCalculator({ item }) {
       });
 
       breakdown.push({
-        level: startLevel + idx + 1,
+        level: lvl.level ?? startLevel + idx + 1,
         countersRequired: countersNeeded,
         copiesRequired,
         materials: materialsForLevel,
@@ -333,7 +360,7 @@ export default function AugmentCalculator({ item }) {
 
   const timedCounters = levelTotals.totalCounters * materialMultiplier;
   const effectiveActions = countersPerTimedAction > 0 ? timedCounters / countersPerTimedAction : timedCounters;
-  const totalTimeSeconds = Math.round(effectiveActions * safeCounterTime);
+  const totalTimeSeconds = isSimpleItem ? 0 : Math.round(effectiveActions * safeCounterTime);
 
   const updateMaterialQty = (id, value) => {
     setMaterials((prev) =>
@@ -349,9 +376,7 @@ export default function AugmentCalculator({ item }) {
   const renameMaterial = (id, newName) => {
     if (!newName.trim()) return;
     setMaterials((prev) =>
-      prev.map((mat) =>
-        mat.id === id ? { ...mat, name: newName.trim() } : mat
-      )
+      prev.map((mat) => (mat.id === id ? { ...mat, name: newName.trim() } : mat))
     );
   };
 
@@ -379,6 +404,8 @@ export default function AugmentCalculator({ item }) {
     setMaterials(mapMaterials(entries));
   };
 
+  const maxCountersAtStart = requirementTable[startLevel]?.counter ?? 0;
+
   return (
     <Stack spacing={6}>
       <Tabs variant="enclosed" colorScheme="brand" isLazy>
@@ -403,40 +430,58 @@ export default function AugmentCalculator({ item }) {
               </HStack>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <LevelSelector label="Start level" value={startLevel} onChange={setStartLevel} />
-                <LevelSelector label="Target level" value={targetLevel} onChange={setTargetLevel} />
-                <CounterInput
-                  label="Start counters done"
-                  value={safeStartProgress}
-                  max={augmentRequirements[startLevel]?.counter || 0}
-                  onChange={setProgress}
-                  helperText={`Max ${(augmentRequirements[startLevel]?.counter ?? 0)} counters at +${startLevel}`}
+                <LevelSelector
+                  label="Start level"
+                  value={startLevel}
+                  onChange={setStartLevel}
+                  maxValue={maxLevelIndex}
                 />
-                <CounterInput
-                  label="Time per counter (s)"
-                  value={counterTime}
-                  min={0.1}
-                  onChange={setCounterTime}
-                  helperText="Average time to complete one counter"
+                <LevelSelector
+                  label="Target level"
+                  value={targetLevel}
+                  onChange={setTargetLevel}
+                  maxValue={targetLevelMaxOption}
                 />
-                <CounterInput
-                  label="Critical augment chance (%)"
-                  value={criticalChance}
-                  min={0}
-                  max={100}
-                  onChange={setCriticalChance}
-                  tooltip="Chance a counter completes without consuming materials."
-                  helperText="0 - 100%"
-                />
-                <CounterInput
-                  label="Quick Study level"
-                  value={quickStudyLevel}
-                  min={0}
-                  max={20}
-                  onChange={setQuickStudyLevel}
-                  tooltip="Each Quick Study level adds a 4% chance to skip a counter (up to 80%)."
-                  helperText="0 - 20"
-                />
+                {!isSimpleItem && (
+                  <CounterInput
+                    label="Start counters done"
+                    value={safeStartProgress}
+                    max={maxCountersAtStart}
+                    onChange={setProgress}
+                    helperText={`Max ${maxCountersAtStart} counters at +${startLevel}`}
+                  />
+                )}
+                {!isSimpleItem && (
+                  <CounterInput
+                    label="Time per counter (s)"
+                    value={counterTime}
+                    min={0.1}
+                    onChange={setCounterTime}
+                    helperText="Average time to complete one counter"
+                  />
+                )}
+                {!isSimpleItem && (
+                  <CounterInput
+                    label="Critical augment chance (%)"
+                    value={criticalChance}
+                    min={0}
+                    max={100}
+                    onChange={setCriticalChance}
+                    tooltip="Chance a counter completes without consuming materials."
+                    helperText="0 - 100%"
+                  />
+                )}
+                {!isSimpleItem && (
+                  <CounterInput
+                    label="Quick Study level"
+                    value={quickStudyLevel}
+                    min={0}
+                    max={20}
+                    onChange={setQuickStudyLevel}
+                    tooltip="Each Quick Study level adds a 4% chance to skip a counter (up to 80%)."
+                    helperText="0 - 20"
+                  />
+                )}
               </SimpleGrid>
             </Stack>
           </TabPanel>
@@ -484,3 +529,24 @@ export default function AugmentCalculator({ item }) {
   );
 }
 
+function readConfigStore() {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = window.localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.error("Failed to read configuration store", error);
+    return {};
+  }
+}
+
+function writeConfigStore(store) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(store));
+  } catch (error) {
+    console.error("Failed to persist configuration store", error);
+  }
+}
