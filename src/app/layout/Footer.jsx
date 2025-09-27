@@ -16,7 +16,7 @@ export default function Footer({ version }) {
       bottom={0}
       zIndex={10}
     >
-      <Box maxW="1200px" mx="auto" w="100%">
+      <Box maxW="1920px" mx="auto" w="100%">
         <Flex
           direction={{ base: 'column', sm: 'row' }}
           justify="space-between"

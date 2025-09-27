@@ -1,6 +1,10 @@
 # Changelog
 
 ---
+## [0.2.4] - 2025-09-27
+- Now saves Crit chance / Quick study as global data.
+- Changed tooltip to what they are in game for crit and QS enchants.
+- Some minor changes to UI (Less dropdown !)
 
 ## [0.2.3] - 2025-09-27
 
