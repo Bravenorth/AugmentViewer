@@ -2,6 +2,15 @@
 
 ---
 
+## [0.2.3] - 2025-09-27
+
+## Item Explorer
+- Allow user to only toggle equipement, scrolls or dungeons keys.
+- Some minor fixes to filters system.
+
+## Augment Planner
+- Support for keys / scrolls : only 1 counter for 1 aug, no bonus from enchants.
+
 ## [0.2.2] - 2025-09-22
 
 ### Item Explorer
