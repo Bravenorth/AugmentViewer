@@ -1,6 +1,11 @@
 # Changelog
 
 ---
+## [0.2.5] - 2025-09-29
+- Intern structure reworked for better maintainability
+- Fix issues brought to 0.2.4
+
+---
 ## [0.2.4] - 2025-09-27
 - Now saves Crit chance / Quick study as global data.
 - Changed tooltip to what they are in game for crit and QS enchants.
