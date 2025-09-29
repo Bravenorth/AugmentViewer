@@ -5,41 +5,38 @@ import { mapMaterials } from "../utils/materials";
 export default function useMaterials(item, defaultMaterials = {}) {
   const [materials, setMaterials] = useState([]);
   const [newMaterialName, setNewMaterialName] = useState("");
-  const itemKeyRef = useRef(null);
+  const itemKeyRef = useRef("unknown-item");
+  const lastItemRef = useRef(null);
   const defaultSnapshotRef = useRef("");
 
-  const defaultEntries = useMemo(
-    () => Object.entries(defaultMaterials),
-    [defaultMaterials]
-  );
-  const serializedDefaults = useMemo(
-    () => JSON.stringify(defaultEntries),
-    [defaultEntries]
-  );
-
   useEffect(() => {
-    const key = getItemKey(item) ?? "unknown-item";
+    const key = getItemKey(item);
+    const resolvedKey = key ?? "unknown-item";
+    const entries = Object.entries(defaultMaterials);
+    const serializedDefaults = JSON.stringify(entries);
     let shouldClearDraftName = false;
 
     setMaterials((prev) => {
-      const isSameItem = itemKeyRef.current === key;
+      const isSameKey = itemKeyRef.current === resolvedKey;
+      const isSameItem = lastItemRef.current === item;
       const defaultsChanged = defaultSnapshotRef.current !== serializedDefaults;
-      const shouldHydrate = !isSameItem || defaultsChanged || prev.length === 0;
+      const shouldHydrate = !isSameKey || !isSameItem || defaultsChanged || prev.length === 0;
 
       if (!shouldHydrate) {
         return prev;
       }
 
-      itemKeyRef.current = key;
+      itemKeyRef.current = resolvedKey;
+      lastItemRef.current = item;
       defaultSnapshotRef.current = serializedDefaults;
-      shouldClearDraftName = !isSameItem || defaultsChanged;
-      return mapMaterials(defaultEntries);
+      shouldClearDraftName = !isSameKey || !isSameItem || defaultsChanged;
+      return mapMaterials(entries);
     });
 
     if (shouldClearDraftName) {
       setNewMaterialName("");
     }
-  }, [defaultEntries, item, serializedDefaults]);
+  }, [defaultMaterials, item]);
 
   const updateMaterialQty = (id, value) => {
     setMaterials((prev) =>
@@ -79,10 +76,14 @@ export default function useMaterials(item, defaultMaterials = {}) {
   };
 
   const resetMaterialsToDefault = () => {
-    const key = getItemKey(item) ?? "unknown-item";
-    itemKeyRef.current = key;
+    const key = getItemKey(item);
+    const resolvedKey = key ?? "unknown-item";
+    const entries = Object.entries(defaultMaterials);
+    const serializedDefaults = JSON.stringify(entries);
+    itemKeyRef.current = resolvedKey;
+    lastItemRef.current = item;
     defaultSnapshotRef.current = serializedDefaults;
-    setMaterials(mapMaterials(defaultEntries));
+    setMaterials(mapMaterials(entries));
     setNewMaterialName("");
   };
 

@@ -74,12 +74,8 @@ export default function useAugmentConfig(item) {
           : clamp(merged.startProgress, 0, maxCountersForStart),
         targetLevel: normalizedTarget,
         counterTime: isSimpleItem ? 0 : clamp(merged.counterTime, 0, undefined),
-        criticalChance: isSimpleItem
-          ? 0
-          : clamp(merged.criticalChance, 0, 100),
-        quickStudyLevel: isSimpleItem
-          ? 0
-          : clamp(merged.quickStudyLevel, 0, 20),
+        criticalChance: clamp(merged.criticalChance, 0, 100),
+        quickStudyLevel: clamp(merged.quickStudyLevel, 0, 20),
       };
     };
   }, [isSimpleItem, maxLevelIndex, requirementTable, targetLevelMaxOption]);
@@ -276,10 +272,23 @@ export default function useAugmentConfig(item) {
     ]
   );
 
-  const isDefaultConfig = useMemo(
-    () => areConfigsEqual(currentConfig, DEFAULT_CONFIG),
-    [areConfigsEqual, currentConfig]
-  );
+  const isDefaultConfig = useMemo(() => {
+    if (!isSimpleItem) {
+      return areConfigsEqual(currentConfig, DEFAULT_CONFIG);
+    }
+
+    const sanitizedCurrent = sanitizeConfig(currentConfig);
+    const sanitizedDefault = sanitizeConfig(DEFAULT_CONFIG);
+
+    sanitizedCurrent.criticalChance = DEFAULT_CONFIG.criticalChance;
+    sanitizedDefault.criticalChance = DEFAULT_CONFIG.criticalChance;
+    sanitizedCurrent.quickStudyLevel = DEFAULT_CONFIG.quickStudyLevel;
+    sanitizedDefault.quickStudyLevel = DEFAULT_CONFIG.quickStudyLevel;
+
+    return Object.keys(DEFAULT_CONFIG).every(
+      (key) => sanitizedCurrent[key] === sanitizedDefault[key]
+    );
+  }, [areConfigsEqual, currentConfig, isSimpleItem, sanitizeConfig]);
 
   const maxCountersAtStart = requirementTable[startLevel]?.counter ?? 0;
 

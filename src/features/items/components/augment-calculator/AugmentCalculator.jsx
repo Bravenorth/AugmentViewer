@@ -1,12 +1,16 @@
 import { Stack, Tabs, Tab, TabList, TabPanels, TabPanel } from "@chakra-ui/react";
+import { useEffect, useMemo } from "react";
 import ConfigurationTab from "./ConfigurationTab";
 import MaterialsTab from "./MaterialsTab";
 import SummaryTab from "./SummaryTab";
 import useAugmentConfig from "./hooks/useAugmentConfig";
 import useLevelData from "./hooks/useLevelData";
 import useMaterials from "./hooks/useMaterials";
+import getItemKey from "../../utils/getItemKey";
 
 export default function AugmentCalculator({ item }) {
+  const itemKey = useMemo(() => getItemKey(item) ?? "unknown-item", [item]);
+
   const {
     isSimpleItem,
     maxLevelIndex,
@@ -43,6 +47,10 @@ export default function AugmentCalculator({ item }) {
     resetMaterialsToDefault,
     materialColumns,
   } = useMaterials(item, defaultMaterials);
+
+  useEffect(() => {
+    resetMaterialsToDefault();
+  }, [itemKey, resetMaterialsToDefault]);
 
   const { startProgress: safeStartProgress, counterTime: safeCounterTime } = safeValues;
 
