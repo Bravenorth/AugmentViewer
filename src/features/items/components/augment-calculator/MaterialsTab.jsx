@@ -1,4 +1,4 @@
-import { Box, Button, Collapse, HStack, Stack } from "@chakra-ui/react";
+import { Box, Button, Collapse, HStack, Stack, useDisclosure } from "@chakra-ui/react";
 import LevelTable from "./LevelTable";
 import MaterialConfig from "./MaterialConfig";
 
@@ -13,9 +13,11 @@ export default function MaterialsTab({
   removeMaterial,
   addMaterial,
   resetMaterialsToDefault,
-  showLevelTable,
-  toggleLevelTable,
 }) {
+  const { isOpen: showLevelTable, onToggle: toggleLevelTable } = useDisclosure({
+    defaultIsOpen: false,
+  });
+
   return (
     <Stack spacing={4}>
       <MaterialConfig

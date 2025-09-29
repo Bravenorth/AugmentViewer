@@ -8,6 +8,7 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
 } from "@chakra-ui/react";
+import { clamp } from "./utils/math";
 
 export default function LevelSelector({ label, value, onChange, maxValue, minValue = 0 }) {
   const fallbackMax = augmentRequirements.length - 1;
@@ -21,9 +22,7 @@ export default function LevelSelector({ label, value, onChange, maxValue, minVal
       return safeMin;
     }
     const rounded = Math.round(numeric);
-    if (rounded < safeMin) return safeMin;
-    if (rounded > safeMax) return safeMax;
-    return rounded;
+    return clamp(rounded, safeMin, safeMax);
   };
 
   const safeValue = clampToRange(value);

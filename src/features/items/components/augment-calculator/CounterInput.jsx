@@ -1,5 +1,6 @@
-﻿import { FormControl, FormLabel, Input, Tooltip, FormHelperText } from "@chakra-ui/react";
+import { FormControl, FormLabel, Input, Tooltip, FormHelperText } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
+import { clamp } from "./utils/math";
 
 export default function CounterInput({
   label,
@@ -17,21 +18,14 @@ export default function CounterInput({
     setInputValue(String(value));
   }, [value]);
 
-  const clampValue = (val) => {
-    let result = Number.isFinite(val) ? val : 0;
-    if (typeof max === 'number' && Number.isFinite(max)) {
-      result = Math.min(result, max);
-    }
-    if (typeof min === 'number' && Number.isFinite(min)) {
-      result = Math.max(result, min);
-    }
-    return result;
+  const clampValue = (raw) => {
+    const numeric = Number(raw);
+    return clamp(numeric, min, max);
   };
 
   const handleBlur = () => {
-    const normalized = inputValue.replace(',', '.');
-    const parsed = parseFloat(normalized);
-    const safeValue = clampValue(parsed);
+    const normalized = inputValue.replace(",", ".");
+    const safeValue = clampValue(normalized);
     onChange(safeValue);
     setInputValue(String(safeValue));
   };
@@ -55,9 +49,7 @@ export default function CounterInput({
           size="sm"
         />
         {helperText && (
-          <FormHelperText color={isInvalid ? 'red.300' : 'gray.500'}>
-            {helperText}
-          </FormHelperText>
+          <FormHelperText color={isInvalid ? "red.300" : "gray.500"}>{helperText}</FormHelperText>
         )}
       </FormControl>
     </Tooltip>

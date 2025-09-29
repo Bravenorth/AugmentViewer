@@ -1,15 +1,7 @@
-import {
-  Stack,
-  Tabs,
-  Tab,
-  TabList,
-  TabPanels,
-  TabPanel,
-  useDisclosure,
-} from "@chakra-ui/react";
+import { Stack, Tabs, Tab, TabList, TabPanels, TabPanel } from "@chakra-ui/react";
 import ConfigurationTab from "./ConfigurationTab";
 import MaterialsTab from "./MaterialsTab";
-import Summary from "./Summary";
+import SummaryTab from "./SummaryTab";
 import useAugmentConfig from "./hooks/useAugmentConfig";
 import useLevelData from "./hooks/useLevelData";
 import useMaterials from "./hooks/useMaterials";
@@ -52,9 +44,6 @@ export default function AugmentCalculator({ item }) {
     materialColumns,
   } = useMaterials(item, defaultMaterials);
 
-  const { isOpen: showLevelTable, onToggle: toggleLevelTable } = useDisclosure({
-    defaultIsOpen: false,
-  });
   const { startProgress: safeStartProgress, counterTime: safeCounterTime } = safeValues;
 
   const { levelBreakdown, levelTotals, maxMaterials, totalMaterials, totalTimeSeconds } =
@@ -113,12 +102,10 @@ export default function AugmentCalculator({ item }) {
               removeMaterial={removeMaterial}
               addMaterial={addMaterial}
               resetMaterialsToDefault={resetMaterialsToDefault}
-              showLevelTable={showLevelTable}
-              toggleLevelTable={toggleLevelTable}
             />
           </TabPanel>
           <TabPanel px={0}>
-            <Summary
+            <SummaryTab
               totalMaterials={totalMaterials}
               maxMaterials={maxMaterials}
               totalCopies={levelTotals.totalCopies}
