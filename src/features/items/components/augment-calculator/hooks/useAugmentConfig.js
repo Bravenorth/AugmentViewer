@@ -16,7 +16,6 @@ export const DEFAULT_CONFIG = Object.freeze({
   startProgress: 0,
   targetLevel: 7,
   counterTime: 3,
-  // ⬇️ globals are still here so defaults are centralized
   criticalChance: 10,
   quickStudyLevel: 0,
 });
@@ -75,6 +74,12 @@ export default function useAugmentConfig(item) {
           : clamp(merged.startProgress, 0, maxCountersForStart),
         targetLevel: normalizedTarget,
         counterTime: isSimpleItem ? 0 : clamp(merged.counterTime, 0, undefined),
+        criticalChance: isSimpleItem
+          ? 0
+          : clamp(merged.criticalChance, 0, 100),
+        quickStudyLevel: isSimpleItem
+          ? 0
+          : clamp(merged.quickStudyLevel, 0, 20),
       };
     };
   }, [isSimpleItem, maxLevelIndex, requirementTable, targetLevelMaxOption]);
@@ -83,7 +88,7 @@ export default function useAugmentConfig(item) {
     return (left, right) => {
       const a = sanitizeConfig(left);
       const b = sanitizeConfig(right);
-      return Object.keys(a).every((key) => a[key] === b[key]);
+      return Object.keys(DEFAULT_CONFIG).every((key) => a[key] === b[key]);
     };
   }, [sanitizeConfig]);
 
@@ -104,8 +109,6 @@ export default function useAugmentConfig(item) {
   const [counterTime, setCounterTime] = useState(
     defaultSanitizedConfig.counterTime
   );
-
-  // ⬇️ globals managed separately
   const [criticalChance, setCriticalChance] = useState(
     DEFAULT_GLOBAL_PREFERENCES.criticalChance
   );
@@ -142,23 +145,21 @@ export default function useAugmentConfig(item) {
     setTargetLevel(sanitized.targetLevel);
     setProgress(clamp(sanitized.startProgress, 0, maxCounters));
     setCounterTime(sanitized.counterTime);
+    setCriticalChance(sanitized.criticalChance);
+    setQuickStudyLevel(sanitized.quickStudyLevel);
   };
 
-  // ⬇️ load config + globals from storage
   useEffect(() => {
     configHydratedRef.current = false;
     const key = getItemKey(item) ?? "unknown-item";
     const store = readConfigStore();
-
     const globalPrefs = sanitizeGlobalPrefs(store[GLOBAL_PREFERENCES_KEY]);
-    setCriticalChance(globalPrefs.criticalChance);
-    setQuickStudyLevel(globalPrefs.quickStudyLevel);
-
     const rawEntry = store[key];
     const resolved = resolveLegacyConfig(rawEntry);
     const mergedConfig = {
       ...DEFAULT_CONFIG,
       ...(resolved ?? {}),
+      ...globalPrefs,
     };
     const sanitizedConfig = sanitizeConfig(mergedConfig);
 
@@ -167,7 +168,6 @@ export default function useAugmentConfig(item) {
     configHydratedRef.current = true;
   }, [item, sanitizeConfig]);
 
-  // ⬇️ persist config + globals to storage
   useEffect(() => {
     if (!configHydratedRef.current || !item) return;
     const key = getItemKey(item);
@@ -178,6 +178,8 @@ export default function useAugmentConfig(item) {
       startProgress,
       targetLevel,
       counterTime,
+      criticalChance,
+      quickStudyLevel,
     });
 
     if (areConfigsEqual(sanitized, lastSavedConfigRef.current)) {
@@ -185,17 +187,29 @@ export default function useAugmentConfig(item) {
     }
 
     const store = readConfigStore();
-
-    // save globals separately
     store[GLOBAL_PREFERENCES_KEY] = sanitizeGlobalPrefs({
-      criticalChance,
-      quickStudyLevel,
+      criticalChance: sanitized.criticalChance,
+      quickStudyLevel: sanitized.quickStudyLevel,
     });
 
-    if (areConfigsEqual(sanitized, DEFAULT_CONFIG)) {
-      delete store[key];
+    const {
+      criticalChance: _criticalChance,
+      quickStudyLevel: _quickStudyLevel,
+      ...itemSpecificConfig
+    } = sanitized;
+
+    const sanitizedWithoutGlobals = {
+      ...sanitized,
+      criticalChance: DEFAULT_CONFIG.criticalChance,
+      quickStudyLevel: DEFAULT_CONFIG.quickStudyLevel,
+    };
+
+    if (areConfigsEqual(sanitizedWithoutGlobals, DEFAULT_CONFIG)) {
+      if (Object.prototype.hasOwnProperty.call(store, key)) {
+        delete store[key];
+      }
     } else {
-      store[key] = sanitized;
+      store[key] = itemSpecificConfig;
     }
 
     writeConfigStore(store);
@@ -203,13 +217,13 @@ export default function useAugmentConfig(item) {
   }, [
     areConfigsEqual,
     counterTime,
+    criticalChance,
     item,
+    quickStudyLevel,
     sanitizeConfig,
     startLevel,
     startProgress,
     targetLevel,
-    criticalChance,
-    quickStudyLevel,
   ]);
 
   useEffect(() => {
@@ -232,8 +246,12 @@ export default function useAugmentConfig(item) {
   const safeCounterTime = isSimpleItem
     ? 0
     : Math.max(Number(counterTime) || 0, 0);
-  const safeCriticalChance = Math.max(0, Math.min(Number(criticalChance) || 0, 100));
-  const safeQuickStudyLevel = Math.max(0, Math.min(Number(quickStudyLevel) || 0, 20));
+  const safeCriticalChance = isSimpleItem
+    ? 0
+    : Math.max(0, Math.min(Number(criticalChance) || 0, 100));
+  const safeQuickStudyLevel = isSimpleItem
+    ? 0
+    : Math.max(0, Math.min(Number(quickStudyLevel) || 0, 20));
   const quickStudyEfficiency = Math.min(safeQuickStudyLevel * 0.04, 0.8);
   const critRate = safeCriticalChance / 100;
   const materialMultiplier = Math.min(Math.max(1 - critRate, 0), 1);
@@ -245,8 +263,17 @@ export default function useAugmentConfig(item) {
       startProgress: safeStartProgress,
       targetLevel,
       counterTime: safeCounterTime,
+      criticalChance: safeCriticalChance,
+      quickStudyLevel: safeQuickStudyLevel,
     }),
-    [safeCounterTime, safeStartProgress, startLevel, targetLevel]
+    [
+      safeCounterTime,
+      safeCriticalChance,
+      safeQuickStudyLevel,
+      safeStartProgress,
+      startLevel,
+      targetLevel,
+    ]
   );
 
   const isDefaultConfig = useMemo(
